@@ -6,6 +6,7 @@
     <title>Reader</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
     <style>
+        /* 原有CSS样式保持不变 */
         :root {
             --primary-bg: #f8f9fa;
             --primary-text: #2c3e50;
@@ -134,7 +135,7 @@
 
         /* 角部控制容器 - 固定定位，不随内容滚动 */
         .corner-control {
-            position: fixed; /* 相对于视口固定 */
+            position: fixed;
             z-index: 100;
             transition: all var(--transition-normal) var(--bezier-smooth);
             pointer-events: auto;
@@ -660,6 +661,25 @@
             color: rgba(52, 152, 219, 0.7);
         }
 
+        /* 存储管理按钮 */
+        .storage-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .storage-info {
+            font-size: 12px;
+            color: var(--secondary-text);
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 6px;
+        }
+
         /* 加载动画 */
         .loading-overlay {
             position: fixed;
@@ -941,6 +961,12 @@
                 <p style="color: var(--secondary-text); max-width: 400px; line-height: 1.6;">支持UTF-8/GBK编码，自动解析章节结构</p>
                 <input type="file" id="fileInput" accept=".txt" style="display: none;">
                 <button class="btn btn-primary" id="selectFileBtn">选择TXT文件</button>
+                
+                <!-- 历史记录 -->
+                <div id="historyList" style="margin-top: 30px; width: 100%; max-width: 400px; display: none;">
+                    <h3 style="font-size: 14px; color: var(--secondary-text); margin-bottom: 10px; text-align: left;">最近阅读</h3>
+                    <div id="historyItems"></div>
+                </div>
             </div>
 
             <!-- 阅读内容区域 -->
@@ -1059,6 +1085,20 @@
             </div>
         </div>
         
+        <!-- 存储管理部分 -->
+        <div class="settings-section">
+            <h3 class="section-title">存储管理</h3>
+            <div class="storage-controls">
+                <button class="btn" id="clearNovelData" title="清除所有小说数据">清除小说数据</button>
+                <button class="btn" id="clearSettings" title="清除所有设置">清除设置</button>
+                <button class="btn" id="exportData" title="导出所有数据">导出数据</button>
+                <button class="btn" id="importData" title="导入数据" style="display: none;">导入数据</button>
+            </div>
+            <div class="storage-info" id="storageInfo">
+                正在计算存储使用情况...
+            </div>
+        </div>
+        
         <div class="settings-section">
             <button class="btn btn-primary" id="resetAllStyles">重置所有设置</button>
         </div>
@@ -1107,7 +1147,6 @@
             chapters: [],
             currentChapterIndex: 0,
             scrollPosition: 0,
-            db: null,
             fontSize: 16,
             fontWeight: 400,
             letterSpacing: 0,
@@ -1117,7 +1156,11 @@
             settingsPanelOpen: false,
             chaptersPanelOpen: false,
             isAnimating: false,
-            observer: null
+            observer: null,
+            db: null,
+            localStorageKey: 'novelReader_',
+            indexedDBName: 'NovelReaderDB',
+            indexedDBVersion: 2
         };
 
         // DOM元素引用
@@ -1154,16 +1197,25 @@
             resetAllStyles: document.getElementById('resetAllStyles'),
             fontUpload: document.getElementById('fontUpload'),
             loadingOverlay: document.getElementById('loadingOverlay'),
-            toast: document.getElementById('toast')
+            toast: document.getElementById('toast'),
+            clearNovelData: document.getElementById('clearNovelData'),
+            clearSettings: document.getElementById('clearSettings'),
+            exportData: document.getElementById('exportData'),
+            importData: document.getElementById('importData'),
+            storageInfo: document.getElementById('storageInfo'),
+            historyList: document.getElementById('historyList'),
+            historyItems: document.getElementById('historyItems')
         };
 
         // 初始化应用
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initEventListeners();
-            initDatabase();
-            loadSettings();
+            await initDatabase();
+            await loadSettings();
+            await loadReadingHistory();
             checkWindowSize();
             initIntersectionObserver();
+            updateStorageInfo();
             
             window.addEventListener('resize', checkWindowSize);
             
@@ -1253,163 +1305,723 @@
             
             // 内容区域滚动保存
             dom.contentContainer.addEventListener('scroll', saveScrollPosition);
-        }
-
-        // 初始化Intersection Observer用于段落渐显动画
-        function initIntersectionObserver() {
-            const options = {
-                root: null,
-                rootMargin: '0px',
-                threshold: 0.1
-            };
             
-            APP.observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('fade-in');
-                        APP.observer.unobserve(entry.target);
-                    }
-                });
-            }, options);
+            // 存储管理
+            dom.clearNovelData.addEventListener('click', clearNovelData);
+            dom.clearSettings.addEventListener('click', clearSettings);
+            dom.exportData.addEventListener('click', exportAllData);
+            
+            // 导入功能通过隐藏的文件输入实现
+            const importInput = document.createElement('input');
+            importInput.type = 'file';
+            importInput.accept = '.json';
+            importInput.style.display = 'none';
+            document.body.appendChild(importInput);
+            
+            dom.importData.addEventListener('click', () => importInput.click());
+            importInput.addEventListener('change', handleDataImport);
         }
 
         // 初始化IndexedDB数据库
         function initDatabase() {
-            const request = indexedDB.open('NovelReaderDB', 1);
-            
-            request.onerror = (event) => {
-                console.error('数据库打开失败:', event.target.error);
-                showToast('数据库初始化失败，部分功能可能不可用', 'error');
-            };
-            
-            request.onsuccess = (event) => {
-                APP.db = event.target.result;
-                console.log('数据库打开成功');
-            };
-            
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(APP.indexedDBName, APP.indexedDBVersion);
                 
-                if (!db.objectStoreNames.contains('novelProgress')) {
-                    const progressStore = db.createObjectStore('novelProgress', { keyPath: 'novelId' });
-                    progressStore.createIndex('lastRead', 'lastRead', { unique: false });
-                }
+                request.onerror = (event) => {
+                    console.error('IndexedDB打开失败:', event.target.error);
+                    showToast('本地存储初始化失败，部分功能可能不可用', 'error');
+                    reject(event.target.error);
+                };
                 
-                if (!db.objectStoreNames.contains('userStyle')) {
-                    const styleStore = db.createObjectStore('userStyle', { keyPath: 'id' });
-                    styleStore.createIndex('name', 'name', { unique: false });
-                }
+                request.onsuccess = (event) => {
+                    APP.db = event.target.result;
+                    console.log('IndexedDB打开成功');
+                    resolve();
+                };
                 
-                if (!db.objectStoreNames.contains('customFont')) {
-                    db.createObjectStore('customFont', { keyPath: 'id' });
-                }
-                
-                console.log('数据库结构创建/更新完成');
-            };
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    
+                    // 创建小说内容存储
+                    if (!db.objectStoreNames.contains('novels')) {
+                        const novelsStore = db.createObjectStore('novels', { keyPath: 'id' });
+                        novelsStore.createIndex('name', 'name', { unique: false });
+                        novelsStore.createIndex('lastRead', 'lastRead', { unique: false });
+                    }
+                    
+                    // 创建进度存储
+                    if (!db.objectStoreNames.contains('progress')) {
+                        const progressStore = db.createObjectStore('progress', { keyPath: 'novelId' });
+                        progressStore.createIndex('lastRead', 'lastRead', { unique: false });
+                    }
+                    
+                    // 创建字体存储
+                    if (!db.objectStoreNames.contains('fonts')) {
+                        db.createObjectStore('fonts', { keyPath: 'id' });
+                    }
+                    
+                    // 创建设置存储
+                    if (!db.objectStoreNames.contains('settings')) {
+                        db.createObjectStore('settings', { keyPath: 'key' });
+                    }
+                    
+                    console.log('IndexedDB结构创建/更新完成');
+                };
+            });
         }
 
-        // 加载设置
-        function loadSettings() {
-            // 从IndexedDB加载样式设置
-            if (APP.db) {
-                const transaction = APP.db.transaction(['userStyle'], 'readonly');
-                const store = transaction.objectStore('userStyle');
-                const request = store.get('currentStyles');
-                
-                request.onsuccess = () => {
-                    if (request.result) {
-                        const styles = request.result;
-                        APP.fontSize = styles.fontSize || 16;
-                        APP.fontWeight = styles.fontWeight || 400;
-                        APP.letterSpacing = styles.letterSpacing || 0;
-                        APP.lineHeight = styles.lineHeight || 1.6;
-                        APP.paragraphSpacing = styles.paragraphSpacing || 1.0;
-                        
-                        // 更新UI控件
-                        dom.fontSize.value = APP.fontSize;
-                        dom.fontSizeValue.textContent = `${APP.fontSize}px`;
-                        dom.fontWeight.value = APP.fontWeight;
-                        dom.fontWeightValue.textContent = APP.fontWeight;
-                        dom.letterSpacing.value = APP.letterSpacing;
-                        dom.letterSpacingValue.textContent = `${APP.letterSpacing}px`;
-                        dom.lineHeight.value = Math.round(APP.lineHeight * 10);
-                        dom.lineHeightValue.textContent = APP.lineHeight.toFixed(1);
-                        dom.paragraphSpacing.value = Math.round(APP.paragraphSpacing * 10);
-                        dom.paragraphSpacingValue.textContent = `${APP.paragraphSpacing.toFixed(1)}em`;
-                        
-                        // 应用样式
-                        applyTextStyles();
+        // 混合存储方案
+        class StorageManager {
+            // 判断数据大小，选择存储方案
+            static shouldUseIndexedDB(data) {
+                const dataSize = JSON.stringify(data).length;
+                return dataSize > 1024 * 1024; // > 1MB 使用 IndexedDB
+            }
+            
+            // 保存小说数据
+            static async saveNovel(novel) {
+                try {
+                    // 判断小说内容大小
+                    const contentSize = JSON.stringify(novel.chapters).length;
+                    
+                    if (contentSize > 1024 * 1024) {
+                        // 大数据使用 IndexedDB
+                        return await this.saveToIndexedDB('novels', novel);
+                    } else {
+                        // 小数据使用 LocalStorage
+                        return this.saveToLocalStorage(`novel_${novel.id}`, novel);
                     }
+                } catch (error) {
+                    console.error('保存小说失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 保存阅读进度
+            static async saveProgress(novelId, chapterIndex, scrollTop) {
+                const progress = {
+                    novelId: novelId,
+                    chapterIndex: chapterIndex,
+                    scrollPosition: scrollTop,
+                    lastRead: new Date().toISOString()
                 };
                 
-                // 加载自定义字体
-                const fontTransaction = APP.db.transaction(['customFont'], 'readonly');
-                const fontStore = fontTransaction.objectStore('customFont');
-                const fontRequest = fontStore.get('userFont');
-                
-                fontRequest.onsuccess = () => {
-                    if (fontRequest.result) {
-                        APP.customFont = fontRequest.result;
-                        applyCustomFont();
+                try {
+                    // 进度数据较小，使用 LocalStorage
+                    return this.saveToLocalStorage(`progress_${novelId}`, progress);
+                } catch (error) {
+                    console.error('保存进度失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 保存设置
+            static async saveSettings(settings) {
+                try {
+                    // 设置数据较小，使用 LocalStorage
+                    return this.saveToLocalStorage('settings', settings);
+                } catch (error) {
+                    console.error('保存设置失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 保存字体
+            static async saveFont(font) {
+                try {
+                    // 字体文件可能较大，使用 IndexedDB
+                    return await this.saveToIndexedDB('fonts', font);
+                } catch (error) {
+                    console.error('保存字体失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 加载小说数据
+            static async loadNovel(novelId) {
+                try {
+                    // 先尝试 LocalStorage
+                    const novel = this.loadFromLocalStorage(`novel_${novelId}`);
+                    if (novel) return novel;
+                    
+                    // 再尝试 IndexedDB
+                    return await this.loadFromIndexedDB('novels', novelId);
+                } catch (error) {
+                    console.error('加载小说失败:', error);
+                    return null;
+                }
+            }
+            
+            // 加载所有小说信息（仅元数据）
+            static async loadAllNovels() {
+                try {
+                    const novels = [];
+                    
+                    // 从 LocalStorage 加载
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key.startsWith('novel_')) {
+                            const novel = JSON.parse(localStorage.getItem(key));
+                            if (novel && novel.name) {
+                                // 只保存元数据，不包含大内容
+                                novels.push({
+                                    id: novel.id,
+                                    name: novel.name,
+                                    size: novel.size,
+                                    lastModified: novel.lastModified,
+                                    chaptersCount: novel.chapters ? novel.chapters.length : 0,
+                                    storageType: 'localStorage'
+                                });
+                            }
+                        }
                     }
-                };
+                    
+                    // 从 IndexedDB 加载
+                    if (APP.db) {
+                        const transaction = APP.db.transaction(['novels'], 'readonly');
+                        const store = transaction.objectStore('novels');
+                        const request = store.getAll();
+                        
+                        await new Promise((resolve) => {
+                            request.onsuccess = () => {
+                                request.result.forEach(novel => {
+                                    novels.push({
+                                        id: novel.id,
+                                        name: novel.name,
+                                        size: novel.size,
+                                        lastModified: novel.lastModified,
+                                        chaptersCount: novel.chapters ? novel.chapters.length : 0,
+                                        storageType: 'indexedDB'
+                                    });
+                                });
+                                resolve();
+                            };
+                        });
+                    }
+                    
+                    // 按最后阅读时间排序
+                    novels.sort((a, b) => {
+                        const progressA = this.loadFromLocalStorage(`progress_${a.id}`);
+                        const progressB = this.loadFromLocalStorage(`progress_${b.id}`);
+                        const timeA = progressA ? new Date(progressA.lastRead) : new Date(0);
+                        const timeB = progressB ? new Date(progressB.lastRead) : new Date(0);
+                        return timeB - timeA;
+                    });
+                    
+                    return novels;
+                } catch (error) {
+                    console.error('加载所有小说失败:', error);
+                    return [];
+                }
+            }
+            
+            // 加载阅读进度
+            static loadProgress(novelId) {
+                return this.loadFromLocalStorage(`progress_${novelId}`);
+            }
+            
+            // 加载设置
+            static loadSettings() {
+                return this.loadFromLocalStorage('settings') || {};
+            }
+            
+            // 加载字体
+            static async loadFont(fontId = 'userFont') {
+                try {
+                    return await this.loadFromIndexedDB('fonts', fontId);
+                } catch (error) {
+                    console.error('加载字体失败:', error);
+                    return null;
+                }
+            }
+            
+            // 删除小说数据
+            static async deleteNovel(novelId) {
+                try {
+                    // 删除 LocalStorage 中的数据
+                    localStorage.removeItem(`novel_${novelId}`);
+                    localStorage.removeItem(`progress_${novelId}`);
+                    
+                    // 删除 IndexedDB 中的数据
+                    if (APP.db) {
+                        const transaction = APP.db.transaction(['novels', 'progress'], 'readwrite');
+                        transaction.objectStore('novels').delete(novelId);
+                        transaction.objectStore('progress').delete(novelId);
+                        await new Promise(resolve => transaction.oncomplete = resolve);
+                    }
+                    
+                    return true;
+                } catch (error) {
+                    console.error('删除小说失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 删除所有小说数据
+            static async deleteAllNovels() {
+                try {
+                    // 清除 LocalStorage 中的小说数据
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const key = localStorage.key(i);
+                        if (key.startsWith('novel_') || key.startsWith('progress_')) {
+                            localStorage.removeItem(key);
+                        }
+                    }
+                    
+                    // 清除 IndexedDB 中的小说数据
+                    if (APP.db) {
+                        const transaction = APP.db.transaction(['novels', 'progress'], 'readwrite');
+                        transaction.objectStore('novels').clear();
+                        transaction.objectStore('progress').clear();
+                        await new Promise(resolve => transaction.oncomplete = resolve);
+                    }
+                    
+                    return true;
+                } catch (error) {
+                    console.error('删除所有小说失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 删除所有设置
+            static deleteAllSettings() {
+                try {
+                    // 清除 LocalStorage 中的设置
+                    localStorage.removeItem('settings');
+                    
+                    // 清除 IndexedDB 中的设置
+                    if (APP.db) {
+                        const transaction = APP.db.transaction(['settings'], 'readwrite');
+                        transaction.objectStore('settings').clear();
+                    }
+                    
+                    // 清除字体
+                    this.deleteFont();
+                    
+                    return true;
+                } catch (error) {
+                    console.error('删除所有设置失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 删除字体
+            static async deleteFont() {
+                try {
+                    // 清除 IndexedDB 中的字体
+                    if (APP.db) {
+                        const transaction = APP.db.transaction(['fonts'], 'readwrite');
+                        transaction.objectStore('fonts').clear();
+                        await new Promise(resolve => transaction.oncomplete = resolve);
+                    }
+                    
+                    return true;
+                } catch (error) {
+                    console.error('删除字体失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 获取存储使用情况
+            static async getStorageInfo() {
+                try {
+                    let totalSize = 0;
+                    let itemsCount = 0;
+                    
+                    // 计算 LocalStorage 使用情况
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        const value = localStorage.getItem(key);
+                        totalSize += key.length + value.length;
+                        itemsCount++;
+                    }
+                    
+                    // 计算 IndexedDB 使用情况
+                    if (APP.db && 'estimate' in APP.db) {
+                        const estimate = await APP.db.estimate();
+                        totalSize += estimate.usage;
+                    }
+                    
+                    return {
+                        totalSize: totalSize,
+                        itemsCount: itemsCount,
+                        formattedSize: this.formatBytes(totalSize)
+                    };
+                } catch (error) {
+                    console.error('获取存储信息失败:', error);
+                    return { totalSize: 0, itemsCount: 0, formattedSize: '0 B' };
+                }
+            }
+            
+            // 导出所有数据
+            static async exportAllData() {
+                try {
+                    const exportData = {
+                        version: '1.0',
+                        exportDate: new Date().toISOString(),
+                        novels: [],
+                        settings: {},
+                        fonts: []
+                    };
+                    
+                    // 导出 LocalStorage 中的小说
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key.startsWith('novel_')) {
+                            const novel = JSON.parse(localStorage.getItem(key));
+                            if (novel) {
+                                exportData.novels.push({
+                                    id: novel.id,
+                                    name: novel.name,
+                                    chapters: novel.chapters,
+                                    size: novel.size,
+                                    lastModified: novel.lastModified,
+                                    storageType: 'localStorage'
+                                });
+                            }
+                        }
+                    }
+                    
+                    // 导出 IndexedDB 中的小说
+                    if (APP.db) {
+                        const transaction = APP.db.transaction(['novels'], 'readonly');
+                        const store = transaction.objectStore('novels');
+                        const request = store.getAll();
+                        
+                        await new Promise((resolve) => {
+                            request.onsuccess = () => {
+                                request.result.forEach(novel => {
+                                    exportData.novels.push({
+                                        id: novel.id,
+                                        name: novel.name,
+                                        chapters: novel.chapters,
+                                        size: novel.size,
+                                        lastModified: novel.lastModified,
+                                        storageType: 'indexedDB'
+                                    });
+                                });
+                                resolve();
+                            };
+                        });
+                    }
+                    
+                    // 导出设置
+                    exportData.settings = this.loadSettings();
+                    
+                    // 导出字体
+                    const font = await this.loadFont();
+                    if (font) {
+                        exportData.fonts.push(font);
+                    }
+                    
+                    return exportData;
+                } catch (error) {
+                    console.error('导出数据失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 导入数据
+            static async importData(data) {
+                try {
+                    if (!data.version || data.version !== '1.0') {
+                        throw new Error('不支持的导出文件格式');
+                    }
+                    
+                    let importedCount = 0;
+                    
+                    // 导入小说
+                    if (data.novels && Array.isArray(data.novels)) {
+                        for (const novel of data.novels) {
+                            try {
+                                await this.saveNovel(novel);
+                                importedCount++;
+                            } catch (error) {
+                                console.warn(`导入小说失败 ${novel.name}:`, error);
+                            }
+                        }
+                    }
+                    
+                    // 导入设置
+                    if (data.settings) {
+                        await this.saveSettings(data.settings);
+                    }
+                    
+                    // 导入字体
+                    if (data.fonts && Array.isArray(data.fonts) && data.fonts.length > 0) {
+                        for (const font of data.fonts) {
+                            try {
+                                await this.saveFont(font);
+                            } catch (error) {
+                                console.warn('导入字体失败:', error);
+                            }
+                        }
+                    }
+                    
+                    return importedCount;
+                } catch (error) {
+                    console.error('导入数据失败:', error);
+                    throw error;
+                }
+            }
+            
+            // 辅助方法：保存到 LocalStorage
+            static saveToLocalStorage(key, data) {
+                try {
+                    const dataStr = JSON.stringify(data);
+                    localStorage.setItem(key, dataStr);
+                    return true;
+                } catch (error) {
+                    if (error.name === 'QuotaExceededError') {
+                        throw new Error('本地存储空间不足，请清除一些数据或使用较小的文件');
+                    }
+                    throw error;
+                }
+            }
+            
+            // 辅助方法：从 LocalStorage 加载
+            static loadFromLocalStorage(key) {
+                try {
+                    const dataStr = localStorage.getItem(key);
+                    return dataStr ? JSON.parse(dataStr) : null;
+                } catch (error) {
+                    console.error(`从LocalStorage加载${key}失败:`, error);
+                    return null;
+                }
+            }
+            
+            // 辅助方法：保存到 IndexedDB
+            static saveToIndexedDB(storeName, data) {
+                return new Promise((resolve, reject) => {
+                    if (!APP.db) {
+                        reject(new Error('IndexedDB未初始化'));
+                        return;
+                    }
+                    
+                    const transaction = APP.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.put(data);
+                    
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = (event) => {
+                        console.error(`保存到IndexedDB失败:`, event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            }
+            
+            // 辅助方法：从 IndexedDB 加载
+            static loadFromIndexedDB(storeName, key) {
+                return new Promise((resolve, reject) => {
+                    if (!APP.db) {
+                        resolve(null);
+                        return;
+                    }
+                    
+                    const transaction = APP.db.transaction([storeName], 'readonly');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.get(key);
+                    
+                    request.onsuccess = () => resolve(request.result || null);
+                    request.onerror = (event) => {
+                        console.error(`从IndexedDB加载失败:`, event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            }
+            
+            // 辅助方法：格式化字节大小
+            static formatBytes(bytes, decimals = 2) {
+                if (bytes === 0) return '0 B';
+                
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
             }
         }
 
-        // 保存设置到IndexedDB
-        function saveSettings() {
-            if (!APP.db) return;
-            
-            const transaction = APP.db.transaction(['userStyle'], 'readwrite');
-            const store = transaction.objectStore('userStyle');
-            
-            const styles = {
-                id: 'currentStyles',
-                fontSize: APP.fontSize,
-                fontWeight: APP.fontWeight,
-                letterSpacing: APP.letterSpacing,
-                lineHeight: APP.lineHeight,
-                paragraphSpacing: APP.paragraphSpacing,
-                lastUpdated: new Date().toISOString()
-            };
-            
-            store.put(styles);
+        // 加载设置
+        async function loadSettings() {
+            try {
+                const settings = await StorageManager.loadSettings();
+                
+                if (settings) {
+                    APP.fontSize = settings.fontSize || 16;
+                    APP.fontWeight = settings.fontWeight || 400;
+                    APP.letterSpacing = settings.letterSpacing || 0;
+                    APP.lineHeight = settings.lineHeight || 1.6;
+                    APP.paragraphSpacing = settings.paragraphSpacing || 1.0;
+                    
+                    // 更新UI控件
+                    dom.fontSize.value = APP.fontSize;
+                    dom.fontSizeValue.textContent = `${APP.fontSize}px`;
+                    dom.fontWeight.value = APP.fontWeight;
+                    dom.fontWeightValue.textContent = APP.fontWeight;
+                    dom.letterSpacing.value = APP.letterSpacing;
+                    dom.letterSpacingValue.textContent = `${APP.letterSpacing}px`;
+                    dom.lineHeight.value = Math.round(APP.lineHeight * 10);
+                    dom.lineHeightValue.textContent = APP.lineHeight.toFixed(1);
+                    dom.paragraphSpacing.value = Math.round(APP.paragraphSpacing * 10);
+                    dom.paragraphSpacingValue.textContent = `${APP.paragraphSpacing.toFixed(1)}em`;
+                    
+                    // 应用样式
+                    applyTextStyles();
+                }
+                
+                // 加载自定义字体
+                const font = await StorageManager.loadFont();
+                if (font) {
+                    APP.customFont = font;
+                    applyCustomFont();
+                }
+            } catch (error) {
+                console.error('加载设置失败:', error);
+                showToast('加载设置失败', 'error');
+            }
+        }
+
+        // 保存设置
+        async function saveSettings() {
+            try {
+                const settings = {
+                    fontSize: APP.fontSize,
+                    fontWeight: APP.fontWeight,
+                    letterSpacing: APP.letterSpacing,
+                    lineHeight: APP.lineHeight,
+                    paragraphSpacing: APP.paragraphSpacing
+                };
+                
+                await StorageManager.saveSettings(settings);
+            } catch (error) {
+                console.error('保存设置失败:', error);
+                showToast('保存设置失败', 'error');
+            }
         }
 
         // 保存阅读进度
-        function saveProgress(novelId, chapterIndex, scrollTop) {
-            if (!APP.db || !novelId) return;
+        async function saveProgress() {
+            if (!APP.currentNovel || APP.chapters.length === 0) return;
             
-            const transaction = APP.db.transaction(['novelProgress'], 'readwrite');
-            const store = transaction.objectStore('novelProgress');
-            
-            const progress = {
-                novelId: novelId,
-                chapterIndex: chapterIndex,
-                scrollPosition: scrollTop,
-                lastRead: new Date().toISOString()
-            };
-            
-            store.put(progress);
+            try {
+                await StorageManager.saveProgress(
+                    APP.currentNovel.id,
+                    APP.currentChapterIndex,
+                    APP.scrollPosition
+                );
+            } catch (error) {
+                console.error('保存进度失败:', error);
+            }
         }
 
-        // 加载阅读进度
-        function loadProgress(novelId) {
-            if (!APP.db || !novelId) return null;
+        // 保存小说数据
+        async function saveNovel() {
+            if (!APP.currentNovel || APP.chapters.length === 0) return;
             
-            return new Promise((resolve) => {
-                const transaction = APP.db.transaction(['novelProgress'], 'readonly');
-                const store = transaction.objectStore('novelProgress');
-                const request = store.get(novelId);
-                
-                request.onsuccess = () => {
-                    resolve(request.result || null);
+            try {
+                const novel = {
+                    id: APP.currentNovel.id,
+                    name: APP.currentNovel.name,
+                    chapters: APP.chapters,
+                    size: APP.currentNovel.size,
+                    lastModified: APP.currentNovel.lastModified
                 };
                 
-                request.onerror = () => {
-                    resolve(null);
+                await StorageManager.saveNovel(novel);
+                
+                // 更新阅读历史
+                await loadReadingHistory();
+            } catch (error) {
+                console.error('保存小说失败:', error);
+                showToast('保存小说失败: ' + error.message, 'error');
+            }
+        }
+
+        // 加载阅读历史
+        async function loadReadingHistory() {
+            try {
+                const novels = await StorageManager.loadAllNovels();
+                
+                if (novels.length > 0) {
+                    dom.historyList.style.display = 'block';
+                    dom.historyItems.innerHTML = '';
+                    
+                    novels.slice(0, 5).forEach(novel => {
+                        const progress = StorageManager.loadProgress(novel.id);
+                        
+                        const item = document.createElement('div');
+                        item.className = 'chapter-item glass';
+                        item.style.marginBottom = '8px';
+                        item.style.cursor = 'pointer';
+                        item.innerHTML = `
+                            <div style="font-weight: 500; margin-bottom: 4px;">${novel.name}</div>
+                            <div style="font-size: 12px; color: var(--secondary-text);">
+                                共${novel.chaptersCount}章 | 
+                                ${progress ? `上次阅读: 第${progress.chapterIndex + 1}章` : '未开始阅读'}
+                            </div>
+                        `;
+                        
+                        item.addEventListener('click', async () => {
+                            await loadNovelFromStorage(novel.id);
+                        });
+                        
+                        dom.historyItems.appendChild(item);
+                    });
+                } else {
+                    dom.historyList.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('加载阅读历史失败:', error);
+            }
+        }
+
+        // 从存储加载小说
+        async function loadNovelFromStorage(novelId) {
+            showLoading(true);
+            
+            try {
+                const novel = await StorageManager.loadNovel(novelId);
+                
+                if (!novel) {
+                    throw new Error('小说数据不存在');
+                }
+                
+                APP.currentNovel = {
+                    id: novel.id,
+                    name: novel.name,
+                    size: novel.size,
+                    lastModified: novel.lastModified
                 };
-            });
+                
+                APP.chapters = novel.chapters || [];
+                
+                // 加载阅读进度
+                const progress = StorageManager.loadProgress(novelId);
+                
+                if (progress) {
+                    APP.currentChapterIndex = progress.chapterIndex || 0;
+                    APP.scrollPosition = progress.scrollPosition || 0;
+                } else {
+                    APP.currentChapterIndex = 0;
+                    APP.scrollPosition = 0;
+                }
+                
+                // 更新UI
+                updateChaptersList();
+                renderChapter();
+                showContentArea();
+                
+                showToast(`《${novel.name}》加载成功`, 'success');
+                
+            } catch (error) {
+                console.error('加载小说失败:', error);
+                showToast('加载小说失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
         }
 
         // 处理文件选择
@@ -1442,8 +2054,11 @@
                 // 解析章节
                 APP.chapters = parseChapters(content);
                 
+                // 保存小说数据
+                await saveNovel();
+                
                 // 加载阅读进度
-                const progress = await loadProgress(novelId);
+                const progress = StorageManager.loadProgress(novelId);
                 
                 if (progress) {
                     APP.currentChapterIndex = progress.chapterIndex || 0;
@@ -1463,7 +2078,7 @@
                 
             } catch (error) {
                 console.error('文件加载失败:', error);
-                showToast('文件加载失败，请检查文件编码或格式', 'error');
+                showToast('文件加载失败: ' + error.message, 'error');
             } finally {
                 // 隐藏加载动画
                 showLoading(false);
@@ -1475,7 +2090,7 @@
 
         // 生成文件哈希作为唯一标识
         async function generateFileHash(file) {
-            // 简单实现：使用文件名+大小+修改时间作为标识
+            // 使用文件名+大小+修改时间作为标识
             return `${file.name}_${file.size}_${file.lastModified}`.replace(/\s+/g, '_');
         }
 
@@ -1571,7 +2186,7 @@
             APP.chapters.forEach((chapter, index) => {
                 const item = document.createElement('div');
                 item.className = `chapter-item glass ${index === APP.currentChapterIndex ? 'active' : ''}`;
-                item.textContent = `${index + 1}. ${chapter.title}`;
+                item.textContent = chapter.title;
                 item.title = chapter.title;
                 
                 item.addEventListener('click', () => {
@@ -1579,7 +2194,7 @@
                     APP.scrollPosition = 0;
                     renderChapter();
                     updateChaptersList();
-                    saveProgress(APP.currentNovel.id, APP.currentChapterIndex, 0);
+                    saveProgress();
                     toggleChaptersPanel(); // 选择章节后自动关闭面板
                 });
                 
@@ -1618,7 +2233,9 @@
                     // 先清除之前的动画类
                     p.classList.remove('fade-in');
                     // 观察元素
-                    APP.observer.observe(p);
+                    if (APP.observer) {
+                        APP.observer.observe(p);
+                    }
                 });
             }, 100);
             
@@ -1667,7 +2284,7 @@
                 APP.currentChapterIndex--;
                 APP.scrollPosition = 0;
                 renderChapter();
-                saveProgress(APP.currentNovel.id, APP.currentChapterIndex, 0);
+                saveProgress();
                 dom.contentContainer.scrollTop = 0;
             }
         }
@@ -1678,7 +2295,7 @@
                 APP.currentChapterIndex++;
                 APP.scrollPosition = 0;
                 renderChapter();
-                saveProgress(APP.currentNovel.id, APP.currentChapterIndex, 0);
+                saveProgress();
                 dom.contentContainer.scrollTop = 0;
             }
         }
@@ -1687,7 +2304,7 @@
         function saveScrollPosition() {
             if (APP.currentNovel && APP.chapters.length > 0) {
                 APP.scrollPosition = dom.contentContainer.scrollTop;
-                saveProgress(APP.currentNovel.id, APP.currentChapterIndex, APP.scrollPosition);
+                saveProgress();
             }
         }
 
@@ -1746,7 +2363,7 @@
         }
 
         // 重置文字样式
-        function resetTextStyle() {
+        async function resetTextStyle() {
             APP.fontSize = 16;
             APP.fontWeight = 400;
             APP.letterSpacing = 0;
@@ -1759,12 +2376,12 @@
             dom.letterSpacingValue.textContent = `${APP.letterSpacing}px`;
             
             applyTextStyles();
-            saveSettings();
+            await saveSettings();
             showToast('文字样式已重置', 'success');
         }
 
         // 重置段落样式
-        function resetParagraphStyle() {
+        async function resetParagraphStyle() {
             APP.lineHeight = 1.6;
             APP.paragraphSpacing = 1.0;
             
@@ -1774,36 +2391,34 @@
             dom.paragraphSpacingValue.textContent = `${APP.paragraphSpacing.toFixed(1)}em`;
             
             applyTextStyles();
-            saveSettings();
+            await saveSettings();
             showToast('段落样式已重置', 'success');
         }
 
         // 重置字体
-        function resetFontStyle() {
+        async function resetFontStyle() {
             APP.customFont = null;
             
-            // 从IndexedDB删除字体
-            if (APP.db) {
-                const transaction = APP.db.transaction(['customFont'], 'readwrite');
-                const store = transaction.objectStore('customFont');
-                store.delete('userFont');
+            try {
+                await StorageManager.deleteFont();
+                document.body.style.fontFamily = "'Noto Sans SC', sans-serif";
+                showToast('字体已恢复为默认', 'success');
+            } catch (error) {
+                console.error('重置字体失败:', error);
+                showToast('重置字体失败', 'error');
             }
-            
-            // 恢复默认字体
-            document.body.style.fontFamily = "'Noto Sans SC', sans-serif";
-            showToast('字体已恢复为默认', 'success');
         }
 
         // 重置所有设置
-        function resetAllStyles() {
-            resetTextStyle();
-            resetParagraphStyle();
-            resetFontStyle();
+        async function resetAllStyles() {
+            await resetTextStyle();
+            await resetParagraphStyle();
+            await resetFontStyle();
             showToast('所有设置已重置', 'success');
         }
 
         // 处理字体上传
-        function handleFontUpload(event) {
+        async function handleFontUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
             
@@ -1814,57 +2429,206 @@
             
             showLoading(true);
             
-            const reader = new FileReader();
-            
-            reader.onload = (e) => {
-                const fontData = e.target.result;
+            try {
+                const reader = new FileReader();
                 
-                // 创建字体对象
-                const font = {
-                    id: 'userFont',
-                    name: file.name.replace('.ttf', ''),
-                    data: fontData,
-                    uploadedAt: new Date().toISOString()
-                };
+                const font = await new Promise((resolve, reject) => {
+                    reader.onload = (e) => {
+                        resolve({
+                            id: 'userFont',
+                            name: file.name.replace('.ttf', ''),
+                            data: e.target.result,
+                            uploadedAt: new Date().toISOString()
+                        });
+                    };
+                    
+                    reader.onerror = () => {
+                        reject(new Error('字体文件读取失败'));
+                    };
+                    
+                    reader.readAsDataURL(file);
+                });
                 
                 APP.customFont = font;
-                
-                // 保存到IndexedDB
-                if (APP.db) {
-                    const transaction = APP.db.transaction(['customFont'], 'readwrite');
-                    const store = transaction.objectStore('customFont');
-                    store.put(font);
-                }
-                
-                // 应用字体
+                await StorageManager.saveFont(font);
                 applyCustomFont();
                 
-                showLoading(false);
                 showToast(`字体"${font.name}"上传成功`, 'success');
-            };
-            
-            reader.onerror = () => {
+            } catch (error) {
+                console.error('字体上传失败:', error);
+                showToast('字体上传失败: ' + error.message, 'error');
+            } finally {
                 showLoading(false);
-                showToast('字体文件读取失败', 'error');
-            };
-            
-            reader.readAsDataURL(file);
+            }
         }
 
         // 应用自定义字体
         function applyCustomFont() {
             if (!APP.customFont) return;
             
-            // 创建字体face
-            const fontFace = new FontFace('CustomFont', `url(${APP.customFont.data})`);
+            try {
+                const fontFace = new FontFace('CustomFont', `url(${APP.customFont.data})`);
+                
+                fontFace.load().then((loadedFace) => {
+                    document.fonts.add(loadedFace);
+                    document.body.style.fontFamily = `'CustomFont', 'Noto Sans SC', sans-serif`;
+                }).catch((error) => {
+                    console.error('字体加载失败:', error);
+                    showToast('自定义字体加载失败', 'error');
+                });
+            } catch (error) {
+                console.error('应用自定义字体失败:', error);
+            }
+        }
+
+        // 清除小说数据
+        async function clearNovelData() {
+            if (!confirm('确定要清除所有小说数据吗？此操作不可恢复。')) {
+                return;
+            }
             
-            fontFace.load().then((loadedFace) => {
-                document.fonts.add(loadedFace);
-                document.body.style.fontFamily = `'CustomFont', 'Noto Sans SC', sans-serif`;
-            }).catch((error) => {
-                console.error('字体加载失败:', error);
-                showToast('自定义字体加载失败', 'error');
-            });
+            showLoading(true);
+            
+            try {
+                await StorageManager.deleteAllNovels();
+                
+                // 重置当前状态
+                APP.currentNovel = null;
+                APP.chapters = [];
+                APP.currentChapterIndex = 0;
+                APP.scrollPosition = 0;
+                
+                // 更新UI
+                dom.fileUploadArea.style.display = 'flex';
+                dom.contentContainer.style.display = 'none';
+                dom.chaptersList.innerHTML = '';
+                dom.chaptersCount.textContent = '0';
+                
+                // 更新历史记录
+                await loadReadingHistory();
+                
+                showToast('所有小说数据已清除', 'success');
+            } catch (error) {
+                console.error('清除小说数据失败:', error);
+                showToast('清除小说数据失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+                updateStorageInfo();
+            }
+        }
+
+        // 清除设置
+        async function clearSettings() {
+            if (!confirm('确定要清除所有设置吗？此操作不可恢复。')) {
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                await StorageManager.deleteAllSettings();
+                
+                // 重置设置
+                await loadSettings();
+                
+                showToast('所有设置已清除', 'success');
+            } catch (error) {
+                console.error('清除设置失败:', error);
+                showToast('清除设置失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+                updateStorageInfo();
+            }
+        }
+
+        // 导出所有数据
+        async function exportAllData() {
+            showLoading(true);
+            
+            try {
+                const exportData = await StorageManager.exportAllData();
+                
+                // 创建下载链接
+                const dataStr = JSON.stringify(exportData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `novel-reader-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                URL.revokeObjectURL(url);
+                
+                showToast('数据导出成功', 'success');
+            } catch (error) {
+                console.error('导出数据失败:', error);
+                showToast('导出数据失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 处理数据导入
+        async function handleDataImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.name.toLowerCase().endsWith('.json')) {
+                showToast('请选择JSON格式的备份文件', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const reader = new FileReader();
+                
+                const importData = await new Promise((resolve, reject) => {
+                    reader.onload = (e) => {
+                        try {
+                            resolve(JSON.parse(e.target.result));
+                        } catch (error) {
+                            reject(new Error('文件格式错误'));
+                        }
+                    };
+                    
+                    reader.onerror = () => {
+                        reject(new Error('文件读取失败'));
+                    };
+                    
+                    reader.readAsText(file);
+                });
+                
+                const importedCount = await StorageManager.importData(importData);
+                
+                // 重新加载设置和历史记录
+                await loadSettings();
+                await loadReadingHistory();
+                
+                showToast(`数据导入成功，共导入${importedCount}本小说`, 'success');
+            } catch (error) {
+                console.error('导入数据失败:', error);
+                showToast('导入数据失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+                event.target.value = '';
+                updateStorageInfo();
+            }
+        }
+
+        // 更新存储信息
+        async function updateStorageInfo() {
+            try {
+                const info = await StorageManager.getStorageInfo();
+                dom.storageInfo.textContent = 
+                    `已使用: ${info.formattedSize} | 项目数: ${info.itemsCount}`;
+            } catch (error) {
+                console.error('更新存储信息失败:', error);
+                dom.storageInfo.textContent = '无法获取存储信息';
+            }
         }
 
         // 切换章节面板
@@ -1923,6 +2687,9 @@
                 // 添加旋转动画
                 dom.settingsBtn.style.transform = 'rotate(180deg)';
                 
+                // 更新存储信息
+                updateStorageInfo();
+                
             } else {
                 // 隐藏设置面板
                 dom.settingsPanel.classList.add('collapsed');
@@ -1944,6 +2711,24 @@
                 // 小屏幕调整面板大小
                 // 自动处理由CSS媒体查询完成
             }
+        }
+
+        // 初始化Intersection Observer用于段落渐显动画
+        function initIntersectionObserver() {
+            const options = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.1
+            };
+            
+            APP.observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('fade-in');
+                        APP.observer.unobserve(entry.target);
+                    }
+                });
+            }, options);
         }
 
         // 显示加载动画

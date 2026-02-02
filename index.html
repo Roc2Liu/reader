@@ -6,7 +6,7 @@
     <title>Reader</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
     <style>
-        /* 原有CSS样式保持不变 */
+        /* CSS样式 */
         :root {
             --primary-bg: #f8f9fa;
             --primary-text: #2c3e50;
@@ -45,7 +45,7 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* 玻璃态设计增强 */
+        /* 玻璃态设计 */
         .glass {
             background: var(--glass-bg);
             backdrop-filter: blur(20px) saturate(180%);
@@ -61,9 +61,9 @@
             pointer-events: none;
         }
 
+        /* 移除transform: translateY(-1px) */
         .glass:hover:not(.glass-disabled):not(.settings-panel):not(.chapters-panel) {
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-            transform: translateY(-1px);
         }
 
         /* 应用主体 */
@@ -133,7 +133,7 @@
             transition: opacity 0.6s var(--bezier-smooth), transform 0.6s var(--bezier-smooth);
         }
 
-        /* 角部控制容器 - 固定定位，不随内容滚动 */
+        /* 角部控制容器 */
         .corner-control {
             position: fixed;
             z-index: 100;
@@ -169,12 +169,11 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all var(--transition-fast) var(--bezier-bounce);
+            transition: all var(--transition-fast) var(--bezier-smooth); /* 改为smooth */
             box-shadow: var(--glass-shadow);
         }
 
         .corner-btn:hover {
-            transform: scale(1.1);
             background: rgba(255, 255, 255, 0.95);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
         }
@@ -203,6 +202,7 @@
             transition: all var(--transition-normal) var(--bezier-smooth);
         }
 
+        /* 翻页按钮 */
         .page-btn {
             padding: 12px 20px;
             border-radius: 12px;
@@ -217,18 +217,17 @@
             font-family: inherit;
             font-size: 14px;
             font-weight: 500;
-            transition: all var(--transition-fast) var(--bezier-bounce);
+            transition: all var(--transition-fast) var(--bezier-smooth); /* 改为smooth */
             min-width: 100px;
         }
 
         .page-btn:hover:not(.glass-disabled) {
             background: rgba(52, 152, 219, 0.2);
-            transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(52, 152, 219, 0.15);
         }
 
         .page-btn:active:not(.glass-disabled) {
-            transform: translateY(0);
+            transform: scale(0.98);
         }
 
         .page-btn.glass-disabled {
@@ -294,6 +293,78 @@
             transform: translateX(calc(-100% - 20px)) scale(0.95);
         }
 
+        /* 设置面板头部 */
+        .settings-header {
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .settings-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .settings-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--accent-color);
+            border-radius: 2px;
+        }
+
+        .settings-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all var(--transition-fast) var(--bezier-smooth);
+            background: var(--glass-highlight);
+        }
+
+        .settings-close:hover {
+            background: var(--accent-light);
+        }
+
+        /* 设置面板内容容器 */
+        .settings-content {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            margin-bottom: 20px;
+            padding-right: 8px;
+        }
+
+        .settings-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .settings-content::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 3px;
+        }
+
+        .settings-content::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 3px;
+            transition: background var(--transition-fast);
+        }
+
+        .settings-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
         /* 章节列表样式 */
         .chapters-header {
             padding-bottom: 20px;
@@ -336,19 +407,19 @@
 
         .chapters-close:hover {
             background: var(--accent-light);
-            transform: rotate(90deg);
         }
 
-        /* 章节列表容器 - 内部滚动 */
+        /* 章节列表容器 */
         .chapters-list-container {
             flex: 1;
             overflow-y: auto;
             position: relative;
             margin-bottom: 20px;
+            padding-right: 8px;
         }
 
         .chapters-list {
-            padding-right: 8px;
+            /* 列表内容 */
         }
 
         .chapters-list-container::-webkit-scrollbar {
@@ -370,6 +441,7 @@
             background: rgba(0, 0, 0, 0.25);
         }
 
+        /* 章节项 */
         .chapter-item {
             padding: 14px 18px;
             margin-bottom: 8px;
@@ -402,7 +474,6 @@
             background: rgba(0, 0, 0, 0.02);
             color: var(--primary-text);
             padding-left: 22px;
-            transform: translateX(2px) scale(1.01);
         }
 
         .chapter-item:hover::before {
@@ -441,6 +512,8 @@
 
         .settings-section:last-child {
             border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
         }
 
         .section-title {
@@ -452,6 +525,7 @@
             align-items: center;
             transform: translateZ(0);
             color: var(--primary-text);
+            padding-right: 40px;
         }
 
         .section-title::before {
@@ -460,12 +534,17 @@
             height: 16px;
             background: var(--accent-color);
             border-radius: 2px;
+            flex-shrink: 0;
         }
 
         .control-group {
             margin-bottom: 16px;
             transition: all var(--transition-normal);
             transform: translateZ(0);
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
         }
 
         .control-label {
@@ -486,7 +565,7 @@
             transform: translateZ(0);
         }
 
-        /* 滑块美学增强 */
+        /* 滑块 */
         .slider-container {
             display: flex;
             align-items: center;
@@ -520,12 +599,11 @@
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
             border: 3px solid var(--accent-color);
-            transition: all var(--transition-fast) var(--bezier-bounce);
+            transition: all var(--transition-fast) var(--bezier-smooth); /* 改为smooth */
             transform: translateZ(0);
         }
 
         .slider::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
             box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
         }
 
@@ -544,7 +622,7 @@
             transition: all var(--transition-fast);
         }
 
-        /* 按钮设计系统 */
+        /* 按钮设计 */
         .btn {
             padding: 12px 20px;
             border-radius: 10px;
@@ -556,7 +634,7 @@
             font-family: inherit;
             font-size: 14px;
             font-weight: 500;
-            transition: all var(--transition-fast) var(--bezier-bounce);
+            transition: all var(--transition-fast) var(--bezier-smooth); /* 改为smooth */
             transform: translateZ(0);
             display: inline-flex;
             align-items: center;
@@ -569,13 +647,12 @@
         }
 
         .btn:hover:not(.glass-disabled) {
-            transform: scale(1.05) translateY(-2px);
             background: rgba(255, 255, 255, 0.95);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
         }
 
         .btn:active:not(.glass-disabled) {
-            transform: scale(0.98) translateY(1px);
+            transform: scale(0.98);
         }
 
         .btn-primary {
@@ -616,11 +693,10 @@
 
         .font-upload-label:hover {
             background: rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
         }
 
         .font-upload-label:active {
-            transform: translateY(0);
+            transform: scale(0.98);
         }
 
         /* 文件上传区域 */
@@ -645,30 +721,35 @@
         .file-upload-area:hover {
             background: rgba(255, 255, 255, 0.7);
             border-color: rgba(52, 152, 219, 0.4);
-            transform: scale(1.01) translateZ(0);
         }
 
         .upload-icon {
             font-size: 64px;
             color: rgba(52, 152, 219, 0.5);
             margin-bottom: 16px;
-            transition: all var(--transition-normal) var(--bezier-bounce);
+            transition: all var(--transition-normal) var(--bezier-smooth); /* 改为smooth */
             transform: translateZ(0);
         }
 
         .file-upload-area:hover .upload-icon {
-            transform: scale(1.1) translateY(-5px);
             color: rgba(52, 152, 219, 0.7);
         }
 
         /* 存储管理按钮 */
         .storage-controls {
             display: flex;
-            gap: 10px;
             flex-wrap: wrap;
+            gap: 10px;
             margin-top: 20px;
             padding-top: 20px;
             border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .storage-controls .btn {
+            flex: 1;
+            min-width: calc(50% - 5px);
+            font-size: 13px;
+            padding: 10px 12px;
         }
 
         .storage-info {
@@ -758,7 +839,7 @@
             -webkit-backdrop-filter: blur(20px);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             z-index: 2000;
-            transition: transform var(--transition-normal) var(--transition-bounce);
+            transition: transform var(--transition-normal) var(--bezier-smooth); /* 改为smooth */
             max-width: 400px;
             text-align: center;
             opacity: 0;
@@ -856,6 +937,44 @@
                 right: 20px;
                 width: calc(100vw - 40px);
             }
+            
+            .settings-panel {
+                padding: 16px;
+            }
+            
+            .settings-header, .chapters-header {
+                padding-bottom: 16px;
+                margin-bottom: 16px;
+            }
+            
+            .settings-content, .chapters-list-container {
+                margin-bottom: 16px;
+            }
+            
+            .settings-section {
+                margin-bottom: 20px;
+                padding-bottom: 16px;
+            }
+            
+            .control-group {
+                margin-bottom: 14px;
+            }
+            
+            .storage-controls .btn {
+                min-width: 100%;
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+            
+            .btn {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+            
+            .section-title {
+                font-size: 15px;
+                padding-right: 30px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -904,17 +1023,93 @@
                 bottom: 12px;
             }
             
-            .chapters-header {
-                padding-bottom: 16px;
-                margin-bottom: 16px;
+            .settings-header, .chapters-header {
+                padding-bottom: 14px;
+                margin-bottom: 14px;
             }
             
-            .chapters-list-container {
-                margin-bottom: 16px;
+            .settings-title, .chapters-title {
+                font-size: 16px;
+            }
+            
+            .settings-close, .chapters-close {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .settings-content, .chapters-list-container {
+                margin-bottom: 14px;
+            }
+            
+            .settings-section {
+                margin-bottom: 18px;
+                padding-bottom: 14px;
+            }
+            
+            .control-group {
+                margin-bottom: 12px;
+            }
+            
+            .control-label {
+                font-size: 13px;
+            }
+            
+            .control-value {
+                font-size: 13px;
+            }
+            
+            .btn {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+            
+            .font-upload-label {
+                padding: 10px;
+                font-size: 13px;
+            }
+            
+            .storage-info {
+                font-size: 11px;
+                padding: 6px 10px;
             }
             
             .chapters-info {
-                padding-top: 16px;
+                padding-top: 14px;
+                font-size: 11px;
+            }
+            
+            .chapter-item {
+                padding: 12px 16px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .settings-panel, .chapters-panel {
+                height: calc(100vh - 20px);
+                top: 10px;
+            }
+            
+            .settings-content {
+                max-height: 60vh;
+            }
+            
+            .chapters-list-container {
+                max-height: 60vh;
+            }
+            
+            .settings-section {
+                margin-bottom: 16px;
+                padding-bottom: 12px;
+            }
+            
+            .control-group {
+                margin-bottom: 10px;
+            }
+            
+            .section-title {
+                margin-bottom: 12px;
+                font-size: 15px;
             }
         }
 
@@ -979,7 +1174,6 @@
         </div>
     </div>
 
-    <!-- 控制按钮 - 固定在视口，不随内容滚动 -->
     <!-- 章节导航按钮 - 左上角 -->
     <div class="corner-control top-left">
         <button class="corner-btn glass" id="chapterNavBtn" title="章节导航">
@@ -1021,86 +1215,104 @@
 
     <!-- 设置面板 -->
     <div class="settings-panel glass collapsed" id="settingsPanel">
-        <div class="settings-section">
-            <h3 class="section-title">文字样式</h3>
-            
-            <div class="control-group">
-                <label class="control-label">字体大小: <span class="control-value" id="fontSizeValue">16px</span></label>
-                <div class="slider-container">
-                    <input type="range" class="slider" id="fontSize" min="12" max="20" value="16" step="1">
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <label class="control-label">字重: <span class="control-value" id="fontWeightValue">400</span></label>
-                <div class="slider-container">
-                    <input type="range" class="slider" id="fontWeight" min="400" max="900" value="400" step="100">
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <label class="control-label">字间距: <span class="control-value" id="letterSpacingValue">0px</span></label>
-                <div class="slider-container">
-                    <input type="range" class="slider" id="letterSpacing" min="0" max="20" value="0" step="1">
-                </div>
-            </div>
-            
-            <button class="btn" id="resetTextStyle">重置文字样式</button>
-        </div>
-        
-        <div class="settings-section">
-            <h3 class="section-title">段落样式</h3>
-            
-            <div class="control-group">
-                <label class="control-label">行间距: <span class="control-value" id="lineHeightValue">1.6</span></label>
-                <div class="slider-container">
-                    <input type="range" class="slider" id="lineHeight" min="10" max="30" value="16" step="1">
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <label class="control-label">段落间距: <span class="control-value" id="paragraphSpacingValue">1.0em</span></label>
-                <div class="slider-container">
-                    <input type="range" class="slider" id="paragraphSpacing" min="5" max="30" value="10" step="1">
-                </div>
-            </div>
-            
-            <button class="btn" id="resetParagraphStyle">重置段落样式</button>
-        </div>
-        
-        <div class="settings-section">
-            <h3 class="section-title">字体设置</h3>
-            
-            <div class="font-upload">
-                <input type="file" id="fontUpload" accept=".ttf" class="font-upload-input">
-                <label for="fontUpload" class="font-upload-label">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                    上传TTF字体
-                </label>
-                <button class="btn" id="resetFont">恢复默认字体</button>
+        <!-- 设置面板头部 -->
+        <div class="settings-header">
+            <h2 class="settings-title">设置</h2>
+            <div class="settings-close" id="settingsClose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
             </div>
         </div>
         
-        <!-- 存储管理部分 -->
-        <div class="settings-section">
-            <h3 class="section-title">存储管理</h3>
-            <div class="storage-controls">
-                <button class="btn" id="clearNovelData" title="清除所有小说数据">清除小说数据</button>
-                <button class="btn" id="clearSettings" title="清除所有设置">清除设置</button>
-                <button class="btn" id="exportData" title="导出所有数据">导出数据</button>
-                <button class="btn" id="importData" title="导入数据" style="display: none;">导入数据</button>
+        <!-- 设置内容容器 -->
+        <div class="settings-content">
+            <!-- 文字样式 -->
+            <div class="settings-section">
+                <h3 class="section-title">文字样式</h3>
+                
+                <div class="control-group">
+                    <label class="control-label">字体大小: <span class="control-value" id="fontSizeValue">16px</span></label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="fontSize" min="12" max="20" value="16" step="1">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">字重: <span class="control-value" id="fontWeightValue">400</span></label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="fontWeight" min="400" max="900" value="400" step="100">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">字间距: <span class="control-value" id="letterSpacingValue">0px</span></label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="letterSpacing" min="0" max="20" value="0" step="1">
+                    </div>
+                </div>
+                
+                <button class="btn" id="resetTextStyle">重置文字样式</button>
             </div>
-            <div class="storage-info" id="storageInfo">
-                正在计算存储使用情况...
+            
+            <!-- 段落样式 -->
+            <div class="settings-section">
+                <h3 class="section-title">段落样式</h3>
+                
+                <div class="control-group">
+                    <label class="control-label">行间距: <span class="control-value" id="lineHeightValue">1.6</span></label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="lineHeight" min="10" max="30" value="16" step="1">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">段落间距: <span class="control-value" id="paragraphSpacingValue">1.0em</span></label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="paragraphSpacing" min="5" max="30" value="10" step="1">
+                    </div>
+                </div>
+                
+                <button class="btn" id="resetParagraphStyle">重置段落样式</button>
             </div>
-        </div>
-        
-        <div class="settings-section">
-            <button class="btn btn-primary" id="resetAllStyles">重置所有设置</button>
+            
+            <!-- 字体设置 -->
+            <div class="settings-section">
+                <h3 class="section-title">字体设置</h3>
+                
+                <div class="font-upload">
+                    <input type="file" id="fontUpload" accept=".ttf" class="font-upload-input">
+                    <label for="fontUpload" class="font-upload-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        上传TTF字体
+                    </label>
+                    <button class="btn" id="resetFont">恢复默认字体</button>
+                </div>
+            </div>
+            
+            <!-- 存储管理 -->
+            <div class="settings-section">
+                <h3 class="section-title">存储管理</h3>
+                <div class="storage-controls">
+                    <button class="btn" id="clearNovelData" title="清除所有小说数据">清除小说数据</button>
+                    <button class="btn" id="clearSettings" title="清除所有设置">清除设置</button>
+                    <button class="btn" id="exportData" title="导出所有数据">导出数据</button>
+                    <button class="btn" id="importData" title="导入数据" style="display: none;">导入数据</button>
+                </div>
+                <div class="storage-info" id="storageInfo">
+                    正在计算存储使用情况...
+                </div>
+            </div>
+            
+            <!-- 重置所有设置 -->
+            <div class="settings-section">
+                <button class="btn btn-primary" id="resetAllStyles">重置所有设置</button>
+            </div>
         </div>
     </div>
 
@@ -1116,7 +1328,7 @@
             </div>
         </div>
         
-        <!-- 添加的滚动容器 -->
+        <!-- 章节列表容器 -->
         <div class="chapters-list-container">
             <div class="chapters-list" id="chaptersList">
                 <!-- 章节列表将通过JavaScript动态生成 -->
@@ -1178,6 +1390,7 @@
             nextPageBtn: document.getElementById('nextPageBtn'),
             settingsPanel: document.getElementById('settingsPanel'),
             chaptersPanel: document.getElementById('chaptersPanel'),
+            settingsClose: document.getElementById('settingsClose'),
             chaptersClose: document.getElementById('chaptersClose'),
             chaptersList: document.getElementById('chaptersList'),
             chaptersCount: document.getElementById('chaptersCount'),
@@ -1218,6 +1431,7 @@
             updateStorageInfo();
             
             window.addEventListener('resize', checkWindowSize);
+            window.addEventListener('orientationchange', checkWindowSize);
             
             dom.settingsPanel.classList.add('collapsed');
             dom.chaptersPanel.classList.add('collapsed');
@@ -1257,7 +1471,8 @@
             dom.prevPageBtn.addEventListener('click', prevChapter);
             dom.nextPageBtn.addEventListener('click', nextChapter);
             
-            // 关闭章节面板
+            // 关闭面板按钮
+            dom.settingsClose.addEventListener('click', toggleSettingsPanel);
             dom.chaptersClose.addEventListener('click', toggleChaptersPanel);
             
             // 键盘快捷键
@@ -2024,6 +2239,124 @@
             }
         }
 
+        // 读取文件内容，自动检测编码
+        function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = (event) => {
+                    // 首先尝试UTF-8（大多数现代文件）
+                    const utf8Content = event.target.result;
+                    
+                    // 检查是否是有效的UTF-8文本
+                    if (typeof utf8Content === 'string') {
+                        // 检查是否有中文字符
+                        const hasChinese = /[\u4e00-\u9fa5]/.test(utf8Content);
+                        // 检查是否有UTF-8解码错误的占位符
+                        const hasMojibake = / /.test(utf8Content);
+                        // 检查是否有乱码的常见模式
+                        const hasGibberish = /[\u0000-\u001F\u0080-\u009F]/.test(utf8Content);
+                        
+                        // 如果有中文字符且没有乱码，使用UTF-8
+                        if (hasChinese && !hasMojibake && !hasGibberish) {
+                            console.log('使用UTF-8编码');
+                            resolve(utf8Content);
+                            return;
+                        }
+                        
+                        // 如果没有中文字符，可能是英文小说或编码问题
+                        if (!hasChinese && utf8Content.length > 0) {
+                            // 尝试其他编码
+                            console.log('未检测到中文字符，尝试其他编码');
+                        }
+                    }
+                    
+                    // 如果UTF-8解码不理想，尝试其他编码
+                    const reader2 = new FileReader();
+                    reader2.onload = (e2) => {
+                        try {
+                            // 先尝试GBK（最常见的中文ANSI编码）
+                            const decoderGBK = new TextDecoder('GBK');
+                            const gbkContent = decoderGBK.decode(e2.target.result);
+                            
+                            // 检查GBK解码结果
+                            const gbkHasChinese = /[\u4e00-\u9fa5]/.test(gbkContent);
+                            const gbkHasMojibake = / /.test(gbkContent);
+                            
+                            if (gbkHasChinese && !gbkHasMojibake) {
+                                console.log('使用GBK编码');
+                                resolve(gbkContent);
+                                return;
+                            }
+                            
+                            // 尝试GB18030（扩展的GBK）
+                            try {
+                                const decoderGB18030 = new TextDecoder('GB18030');
+                                const gb18030Content = decoderGB18030.decode(e2.target.result);
+                                const gb18030HasChinese = /[\u4e00-\u9fa5]/.test(gb18030Content);
+                                
+                                if (gb18030HasChinese) {
+                                    console.log('使用GB18030编码');
+                                    resolve(gb18030Content);
+                                    return;
+                                }
+                            } catch (gb18030Error) {
+                                // GB18030失败，继续尝试其他编码
+                            }
+                            
+                            // 尝试Big5（繁体中文）
+                            try {
+                                const decoderBig5 = new TextDecoder('Big5');
+                                const big5Content = decoderBig5.decode(e2.target.result);
+                                const big5HasChinese = /[\u4e00-\u9fa5]/.test(big5Content);
+                                
+                                if (big5HasChinese) {
+                                    console.log('使用Big5编码');
+                                    resolve(big5Content);
+                                    return;
+                                }
+                            } catch (big5Error) {
+                                // Big5失败，继续尝试其他编码
+                            }
+                            
+                            // 最后尝试ISO-8859-1（西欧语言）
+                            try {
+                                const decoderLatin1 = new TextDecoder('ISO-8859-1');
+                                const latin1Content = decoderLatin1.decode(e2.target.result);
+                                console.log('使用ISO-8859-1编码');
+                                resolve(latin1Content);
+                                return;
+                            } catch (latin1Error) {
+                                // 所有编码都失败，返回UTF-8内容
+                                console.log('所有编码尝试失败，使用原始UTF-8内容');
+                                resolve(utf8Content || '');
+                            }
+                        } catch (error) {
+                            console.error('解码失败:', error);
+                            // 如果解码失败，返回原始内容
+                            resolve(utf8Content || '');
+                        }
+                    };
+                    
+                    reader2.onerror = () => {
+                        console.error('读取文件为ArrayBuffer失败');
+                        // 如果读取失败，返回原始内容
+                        resolve(utf8Content || '');
+                    };
+                    
+                    // 重新读取为ArrayBuffer以便尝试不同编码
+                    reader2.readAsArrayBuffer(file);
+                };
+                
+                reader.onerror = () => {
+                    reject(new Error('文件读取失败'));
+                };
+                
+                // 先尝试UTF-8
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+        
         // 处理文件选择
         async function handleFileSelect(event) {
             const file = event.target.files[0];
@@ -2048,11 +2381,25 @@
                     lastModified: file.lastModified
                 };
                 
-                // 解析文件内容
+                // 使用增强的编码检测函数解析文件内容
                 const content = await readFileContent(file);
+                
+                // 检查内容是否为空
+                if (!content || content.trim().length === 0) {
+                    throw new Error('文件内容为空或无法解码');
+                }
+                
+                // 显示编码调试信息
+                console.log('文件内容前200字符:', content.substring(0, 200));
+                console.log('文件内容长度:', content.length);
                 
                 // 解析章节
                 APP.chapters = parseChapters(content);
+                
+                // 检查是否成功解析到章节
+                if (APP.chapters.length === 0) {
+                    throw new Error('无法解析章节结构，请检查文件格式');
+                }
                 
                 // 保存小说数据
                 await saveNovel();
@@ -2094,39 +2441,12 @@
             return `${file.name}_${file.size}_${file.lastModified}`.replace(/\s+/g, '_');
         }
 
-        // 读取文件内容
-        function readFileContent(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                
-                reader.onload = (event) => {
-                    let content = event.target.result;
-                    
-                    if (typeof content === 'string') {
-                        resolve(content);
-                    } else {
-                        // 处理二进制数据（GBK编码）
-                        const decoder = new TextDecoder('gbk');
-                        const decodedContent = decoder.decode(content);
-                        resolve(decodedContent);
-                    }
-                };
-                
-                reader.onerror = () => {
-                    reject(new Error('文件读取失败'));
-                };
-                
-                // 先尝试作为文本读取
-                reader.readAsText(file, 'UTF-8');
-            });
-        }
-
         // 解析章节
         function parseChapters(content) {
             const chapters = [];
             
-            // 章节正则表达式
-            const chapterRegex = /^(第[零一二三四五六七八九十百千万\d]+章|第[零一二三四五六七八九十百千万\d]+回|第[零一二三四五六七八九十百千万\d]+节|第[零一二三四五六七八九十百千万\d]+卷|第[零一二三四五六七八九十百千万\d]+篇|[上下]?卷之[零一二三四五六七八九十百千万\d]+|CHAPTER\s+\d+|Chapter\s+\d+|\d+\.\s+)/im;
+            // 增强的章节正则表达式，匹配更多格式
+            const chapterRegex = /^(第[零一二三四五六七八九十百千万\d]+章|第[零一二三四五六七八九十百千万\d]+回|第[零一二三四五六七八九十百千万\d]+节|第[零一二三四五六七八九十百千万\d]+卷|第[零一二三四五六七八九十百千万\d]+篇|[上下]?卷之[零一二三四五六七八九十百千万\d]+|CHAPTER\s+\d+|Chapter\s+\d+|\d+\.\s+|【.*?】|\[.*?\])/im;
             
             // 按行分割内容
             const lines = content.split(/\r?\n/);
@@ -2159,11 +2479,18 @@
                     } else {
                         currentChapter.content = line;
                     }
+                } else {
+                    // 在遇到第一个章节前的文本作为"开始"章节
+                    if (currentChapter.content) {
+                        currentChapter.content += '\n' + line;
+                    } else {
+                        currentChapter.content = line;
+                    }
                 }
             }
             
             // 添加最后一章
-            if (currentChapter.content || !inChapter) {
+            if (currentChapter.content) {
                 chapters.push({ ...currentChapter });
             }
             
@@ -2643,9 +2970,6 @@
                 dom.chaptersPanel.classList.remove('collapsed');
                 dom.chaptersMask.classList.add('active');
                 
-                // 添加旋转动画
-                dom.chapterNavBtn.style.transform = 'rotate(90deg)';
-                
                 // 确保章节列表是最新的
                 updateChaptersList();
                 
@@ -2661,9 +2985,6 @@
                 // 隐藏章节面板
                 dom.chaptersPanel.classList.add('collapsed');
                 dom.chaptersMask.classList.remove('active');
-                
-                // 重置旋转
-                dom.chapterNavBtn.style.transform = 'rotate(0deg)';
             }
             
             // 重置动画标志
@@ -2684,9 +3005,6 @@
                 dom.settingsPanel.classList.remove('collapsed');
                 dom.settingsMask.classList.add('active');
                 
-                // 添加旋转动画
-                dom.settingsBtn.style.transform = 'rotate(180deg)';
-                
                 // 更新存储信息
                 updateStorageInfo();
                 
@@ -2694,9 +3012,6 @@
                 // 隐藏设置面板
                 dom.settingsPanel.classList.add('collapsed');
                 dom.settingsMask.classList.remove('active');
-                
-                // 重置旋转
-                dom.settingsBtn.style.transform = 'rotate(0deg)';
             }
             
             // 重置动画标志
@@ -2707,9 +3022,20 @@
 
         // 检查窗口大小并调整布局
         function checkWindowSize() {
-            if (window.innerWidth < 768) {
-                // 小屏幕调整面板大小
-                // 自动处理由CSS媒体查询完成
+            const isSmallScreen = window.innerWidth < 768;
+            const isVerySmallScreen = window.innerWidth < 480;
+            const isShortScreen = window.innerHeight < 600;
+            
+            // 可以根据屏幕尺寸调整UI
+            if (isSmallScreen || isVerySmallScreen || isShortScreen) {
+                // CSS媒体查询会处理大部分样式调整
+                console.log('屏幕尺寸调整:', {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    isSmallScreen,
+                    isVerySmallScreen,
+                    isShortScreen
+                });
             }
         }
 

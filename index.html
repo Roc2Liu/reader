@@ -409,7 +409,7 @@
             background: var(--accent-light);
         }
 
-        /* 章节列表容器 */
+        /* 章节列表容器 - 内部滚动 */
         .chapters-list-container {
             flex: 1;
             overflow-y: auto;
@@ -622,7 +622,7 @@
             transition: all var(--transition-fast);
         }
 
-        /* 按钮设计 */
+        /* 按钮 */
         .btn {
             padding: 12px 20px;
             border-radius: 10px;
@@ -697,6 +697,29 @@
 
         .font-upload-label:active {
             transform: scale(0.98);
+        }
+
+        /* 字体预览区域 */
+        .font-preview {
+            margin-top: 12px;
+            padding: 16px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px dashed rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .font-preview-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: var(--primary-text);
+        }
+
+        .font-preview-name {
+            font-size: 12px;
+            color: var(--secondary-text);
+            margin-top: 4px;
         }
 
         /* 文件上传区域 */
@@ -974,6 +997,14 @@
             .section-title {
                 font-size: 15px;
                 padding-right: 30px;
+            }
+            
+            .font-preview {
+                padding: 12px;
+            }
+            
+            .font-preview-text {
+                font-size: 14px;
             }
         }
 
@@ -1282,15 +1313,22 @@
                 <h3 class="section-title">字体设置</h3>
                 
                 <div class="font-upload">
-                    <input type="file" id="fontUpload" accept=".ttf" class="font-upload-input">
+                    <input type="file" id="fontUpload" accept=".ttf,.otf,.woff,.woff2" class="font-upload-input">
                     <label for="fontUpload" class="font-upload-label">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                             <polyline points="17 8 12 3 7 8"/>
                             <line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
-                        上传TTF字体
+                        上传字体文件 (TTF/OTF/WOFF)
                     </label>
+                    
+                    <!-- 字体预览区域 -->
+                    <div class="font-preview" id="fontPreview" style="display: none;">
+                        <div class="font-preview-text" id="fontPreviewText">字体预览：中文字体示例</div>
+                        <div class="font-preview-name" id="fontPreviewName"></div>
+                    </div>
+                    
                     <button class="btn" id="resetFont">恢复默认字体</button>
                 </div>
             </div>
@@ -1347,7 +1385,7 @@
             <div class="loading-block"></div>
             <div class="loading-block"></div>
         </div>
-    </div>
+</div>
 
     <!-- 提示条 -->
     <div class="toast" id="toast"></div>
@@ -1409,6 +1447,9 @@
             resetFont: document.getElementById('resetFont'),
             resetAllStyles: document.getElementById('resetAllStyles'),
             fontUpload: document.getElementById('fontUpload'),
+            fontPreview: document.getElementById('fontPreview'),
+            fontPreviewText: document.getElementById('fontPreviewText'),
+            fontPreviewName: document.getElementById('fontPreviewName'),
             loadingOverlay: document.getElementById('loadingOverlay'),
             toast: document.getElementById('toast'),
             clearNovelData: document.getElementById('clearNovelData'),
@@ -1435,6 +1476,9 @@
             
             dom.settingsPanel.classList.add('collapsed');
             dom.chaptersPanel.classList.add('collapsed');
+            
+            // 初始化字体预览
+            updateFontPreview();
         });
 
         // 初始化事件监听器
@@ -2728,7 +2772,8 @@
             
             try {
                 await StorageManager.deleteFont();
-                document.body.style.fontFamily = "'Noto Sans SC', sans-serif";
+                document.body.style.fontFamily = "'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+                updateFontPreview();
                 showToast('字体已恢复为默认', 'success');
             } catch (error) {
                 console.error('重置字体失败:', error);
@@ -2744,41 +2789,85 @@
             showToast('所有设置已重置', 'success');
         }
 
+        // ============================================
+        // 修复部分：改进字体处理，支持OTF和WOFF格式
+        // ============================================
+        
         // 处理字体上传
         async function handleFontUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
             
-            if (!file.name.toLowerCase().endsWith('.ttf')) {
-                showToast('请选择TTF格式的字体文件', 'error');
+            // 检查文件类型 - 支持TTF、OTF、WOFF、WOFF2
+            const validExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
+            const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+            
+            if (!validExtensions.includes(fileExtension)) {
+                showToast('请选择TTF、OTF、WOFF或WOFF2格式的字体文件', 'error');
                 return;
             }
             
             showLoading(true);
             
             try {
+                // 创建文件读取器
                 const reader = new FileReader();
                 
-                const font = await new Promise((resolve, reject) => {
+                // 读取文件为ArrayBuffer，这样更可靠
+                const fontData = await new Promise((resolve, reject) => {
                     reader.onload = (e) => {
-                        resolve({
-                            id: 'userFont',
-                            name: file.name.replace('.ttf', ''),
-                            data: e.target.result,
-                            uploadedAt: new Date().toISOString()
-                        });
+                        resolve(e.target.result);
                     };
                     
                     reader.onerror = () => {
                         reject(new Error('字体文件读取失败'));
                     };
                     
-                    reader.readAsDataURL(file);
+                    reader.readAsArrayBuffer(file);
                 });
                 
+                // 将ArrayBuffer转换为base64
+                const base64Font = arrayBufferToBase64(fontData);
+                
+                // 根据文件类型确定格式
+                let fontFormat;
+                switch (fileExtension) {
+                    case '.ttf':
+                        fontFormat = 'truetype';
+                        break;
+                    case '.otf':
+                        fontFormat = 'opentype';
+                        break;
+                    case '.woff':
+                        fontFormat = 'woff';
+                        break;
+                    case '.woff2':
+                        fontFormat = 'woff2';
+                        break;
+                    default:
+                        fontFormat = 'truetype';
+                }
+                
+                // 创建字体对象
+                const font = {
+                    id: 'userFont',
+                    name: file.name.replace(fileExtension, ''),
+                    data: base64Font,
+                    format: fontFormat,
+                    fileType: fileExtension.substring(1).toUpperCase(),
+                    uploadedAt: new Date().toISOString(),
+                    size: file.size
+                };
+                
+                // 保存字体到存储
                 APP.customFont = font;
                 await StorageManager.saveFont(font);
+                
+                // 应用字体
                 applyCustomFont();
+                
+                // 更新字体预览
+                updateFontPreview();
                 
                 showToast(`字体"${font.name}"上传成功`, 'success');
             } catch (error) {
@@ -2789,22 +2878,158 @@
             }
         }
 
+        // 将ArrayBuffer转换为Base64
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
         // 应用自定义字体
         function applyCustomFont() {
             if (!APP.customFont) return;
             
             try {
-                const fontFace = new FontFace('CustomFont', `url(${APP.customFont.data})`);
+                // 清理之前的自定义字体
+                const existingStyles = document.querySelectorAll('[data-custom-font-style]');
+                existingStyles.forEach(style => style.remove());
+                
+                // 创建唯一的字体家族名称
+                const fontFamilyName = 'CustomFont_' + Date.now();
+                
+                // 创建CSS样式
+                const style = document.createElement('style');
+                style.setAttribute('data-custom-font-style', 'true');
+                
+                // 创建base64字体URL
+                const fontData = APP.customFont.data;
+                const fontFormat = APP.customFont.format;
+                
+                // 创建CSS字体规则
+                const fontFaceRule = `
+                @font-face {
+                    font-family: '${fontFamilyName}';
+                    src: url('data:font/${APP.customFont.fileType.toLowerCase()};charset=utf-8;base64,${fontData}') format('${fontFormat}');
+                    font-weight: normal;
+                    font-style: normal;
+                    font-display: swap;
+                }
+                `;
+                
+                style.textContent = fontFaceRule;
+                document.head.appendChild(style);
+                
+                // 等待字体加载完成
+                const testElement = document.createElement('span');
+                testElement.style.fontFamily = fontFamilyName;
+                testElement.style.position = 'absolute';
+                testElement.style.left = '-9999px';
+                testElement.style.fontSize = '16px';
+                testElement.textContent = '测试字体加载';
+                document.body.appendChild(testElement);
+                
+                // 检查字体是否加载成功
+                setTimeout(() => {
+                    const loaded = document.fonts.check(`16px ${fontFamilyName}`);
+                    
+                    if (loaded) {
+                        // 字体加载成功，应用字体
+                        document.body.style.fontFamily = `'${fontFamilyName}', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+                        console.log(`字体加载成功: ${fontFamilyName}`);
+                        showToast(`字体"${APP.customFont.name}"加载成功`, 'success');
+                    } else {
+                        // 字体加载失败，尝试备用方法
+                        console.warn('字体加载失败，尝试备用方法');
+                        applyCustomFontFallback(fontFamilyName, fontData, fontFormat);
+                    }
+                    
+                    // 清理测试元素
+                    document.body.removeChild(testElement);
+                    
+                    // 更新字体预览
+                    updateFontPreview();
+                    
+                }, 100);
+                
+            } catch (error) {
+                console.error('应用自定义字体失败:', error);
+                showToast('应用自定义字体失败: ' + error.message, 'error');
+            }
+        }
+
+        // 备用方法：使用FontFace API
+        function applyCustomFontFallback(fontFamilyName, fontData, fontFormat) {
+            try {
+                // 移除之前的字体定义
+                const existingFonts = document.fonts.values();
+                for (const font of existingFonts) {
+                    if (font.family.startsWith('CustomFont_')) {
+                        document.fonts.delete(font);
+                    }
+                }
+                
+                // 创建Blob URL
+                const binary = atob(fontData);
+                const array = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    array[i] = binary.charCodeAt(i);
+                }
+                
+                const blob = new Blob([array], { type: `font/${APP.customFont.fileType.toLowerCase()}` });
+                const fontUrl = URL.createObjectURL(blob);
+                
+                // 使用FontFace API
+                const fontFace = new FontFace(fontFamilyName, `url(${fontUrl}) format('${fontFormat}')`, {
+                    style: 'normal',
+                    weight: '400',
+                    display: 'swap'
+                });
                 
                 fontFace.load().then((loadedFace) => {
                     document.fonts.add(loadedFace);
-                    document.body.style.fontFamily = `'CustomFont', 'Noto Sans SC', sans-serif`;
+                    
+                    // 应用字体
+                    document.body.style.fontFamily = `'${fontFamilyName}', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+                    
+                    // 清理URL
+                    setTimeout(() => URL.revokeObjectURL(fontUrl), 1000);
+                    
+                    console.log(`字体通过备用方法加载成功: ${fontFamilyName}`);
+                    showToast(`字体"${APP.customFont.name}"加载成功`, 'success');
+                    
                 }).catch((error) => {
-                    console.error('字体加载失败:', error);
-                    showToast('自定义字体加载失败', 'error');
+                    console.error('备用方法字体加载失败:', error);
+                    showToast('自定义字体加载失败，可能是字体文件损坏或不支持', 'error');
                 });
+                
             } catch (error) {
-                console.error('应用自定义字体失败:', error);
+                console.error('备用方法失败:', error);
+                showToast('字体加载失败: ' + error.message, 'error');
+            }
+        }
+
+        // 更新字体预览
+        function updateFontPreview() {
+            if (APP.customFont) {
+                // 显示预览区域
+                dom.fontPreview.style.display = 'block';
+                dom.fontPreviewText.textContent = `字体预览：${APP.customFont.name}`;
+                dom.fontPreviewName.textContent = `当前字体: ${APP.customFont.name} (${APP.customFont.fileType})`;
+                
+                // 应用预览字体（使用与主体相同的字体栈）
+                dom.fontPreviewText.style.fontFamily = document.body.style.fontFamily;
+            } else {
+                // 隐藏预览区域
+                dom.fontPreview.style.display = 'none';
+                dom.fontPreviewText.textContent = '字体预览：中文字体示例';
+                dom.fontPreviewName.textContent = '';
+                
+                // 恢复默认字体
+                dom.fontPreviewText.style.fontFamily = "'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
             }
         }
 
@@ -2934,6 +3159,9 @@
                 // 重新加载设置和历史记录
                 await loadSettings();
                 await loadReadingHistory();
+                
+                // 更新字体预览
+                updateFontPreview();
                 
                 showToast(`数据导入成功，共导入${importedCount}本小说`, 'success');
             } catch (error) {

@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reader</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
     <style>
-        /* CSS样式 */
+        /* CSS变量 - 统一设计系统 */
         :root {
             --primary-bg: #f8f9fa;
             --primary-text: #2c3e50;
@@ -18,42 +17,67 @@
             --glass-border: rgba(255, 255, 255, 0.4);
             --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
             --glass-highlight: rgba(255, 255, 255, 0.6);
-            --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            --transition-fast: 150ms;
-            --transition-normal: 250ms;
-            --transition-slow: 350ms;
-            --bezier-smooth: cubic-bezier(0.25, 0.8, 0.25, 1);
-            --bezier-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            
+            /* 统一动画曲线 */
+            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            --ease-out: cubic-bezier(0, 0, 0.2, 1);
+            --ease-in: cubic-bezier(0.4, 0, 1, 1);
+            
+            /* 统一动画时长 */
+            --duration-fast: 150ms;
+            --duration-normal: 250ms;
+            --duration-slow: 350ms;
+            
+            /* 统一圆角 */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-2xl: 24px;
+            --radius-full: 9999px;
+            
+            /* 性能优化 */
+            --backdrop-blur: blur(20px) saturate(180%);
+            --scrollbar-width: 8px;
         }
 
+        /* 重置和基础样式 */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         body {
-            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
             color: var(--primary-text);
             overflow: hidden;
             height: 100vh;
             display: flex;
             flex-direction: column;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            will-change: auto;
         }
 
-        /* 玻璃态设计 */
+        /* 玻璃态设计 - 统一圆角 */
         .glass {
             background: var(--glass-bg);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            backdrop-filter: var(--backdrop-blur);
+            -webkit-backdrop-filter: var(--backdrop-blur);
             border: 1px solid var(--glass-border);
             box-shadow: var(--glass-shadow);
-            border-radius: 16px;
-            transition: all 0.3s var(--transition-smooth);
+            border-radius: var(--radius-lg);
+            transition: all var(--duration-normal) var(--ease-smooth);
+            will-change: transform, opacity, box-shadow;
+            transform: translateZ(0);
         }
 
         .glass-disabled {
@@ -61,7 +85,6 @@
             pointer-events: none;
         }
 
-        /* 移除transform: translateY(-1px) */
         .glass:hover:not(.glass-disabled):not(.settings-panel):not(.chapters-panel) {
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
         }
@@ -81,30 +104,33 @@
             flex: 1;
             position: relative;
             overflow: hidden;
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
         }
 
         .content-container {
             height: 100%;
             overflow-y: auto;
-            padding: 60px 100px;
+            padding: 60px clamp(40px, 5vw, 100px);
             scroll-behavior: smooth;
             scrollbar-width: thin;
             scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
             position: relative;
+            -webkit-overflow-scrolling: touch;
         }
 
         .content-container::-webkit-scrollbar {
-            width: 8px;
+            width: var(--scrollbar-width);
         }
 
         .content-container::-webkit-scrollbar-track {
             background: transparent;
+            border-radius: var(--radius-full);
         }
 
         .content-container::-webkit-scrollbar-thumb {
             background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
+            border-radius: var(--radius-full);
+            transition: background var(--duration-fast) var(--ease-smooth);
         }
 
         .content-container::-webkit-scrollbar-thumb:hover {
@@ -112,33 +138,36 @@
         }
 
         .content {
-            max-width: 800px;
+            max-width: min(800px, 90vw);
             margin: 0 auto;
             line-height: 1.6;
             font-size: 16px;
-            transition: all var(--transition-normal) var(--bezier-smooth);
+            transition: all var(--duration-normal) var(--ease-smooth);
+            will-change: font-size, line-height, letter-spacing;
         }
 
-        /* 段落渐显动画 */
+        /* 段落渐显动画 - 性能优化 */
         .content p {
             margin-bottom: 1em;
-            transition: all var(--transition-normal);
+            transition: all var(--duration-normal);
             opacity: 0;
             transform: translateY(20px);
+            will-change: transform, opacity;
         }
 
         .content p.fade-in {
             opacity: 1;
             transform: translateY(0);
-            transition: opacity 0.6s var(--bezier-smooth), transform 0.6s var(--bezier-smooth);
+            transition: opacity 0.6s var(--ease-smooth), transform 0.6s var(--ease-smooth);
         }
 
         /* 角部控制容器 */
         .corner-control {
             position: fixed;
             z-index: 100;
-            transition: all var(--transition-normal) var(--bezier-smooth);
+            transition: all var(--duration-normal) var(--ease-smooth);
             pointer-events: auto;
+            will-change: transform, opacity;
         }
 
         .corner-control.top-left {
@@ -156,20 +185,20 @@
             right: 40px;
         }
 
-        /* 角部按钮 */
+        /* 角部按钮 - 统一圆角 */
         .corner-btn {
             width: 48px;
             height: 48px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--glass-border);
             background: var(--glass-bg);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            backdrop-filter: var(--backdrop-blur);
+            -webkit-backdrop-filter: var(--backdrop-blur);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all var(--transition-fast) var(--bezier-smooth); /* 改为smooth */
+            transition: all var(--duration-fast) var(--ease-smooth);
             box-shadow: var(--glass-shadow);
         }
 
@@ -186,48 +215,51 @@
             width: 20px;
             height: 20px;
             stroke: var(--primary-text);
+            transition: stroke var(--duration-fast);
         }
 
-        /* 翻页按钮组 */
+        /* 翻页按钮组 - 统一圆角 */
         .page-control-group {
             display: flex;
-            gap: 12px;
-            padding: 12px;
-            border-radius: 16px;
+            align-items: center;
+            padding: 0;
+            border-radius: var(--radius-full);
             border: 1px solid var(--glass-border);
             background: var(--glass-bg);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            backdrop-filter: var(--backdrop-blur);
+            -webkit-backdrop-filter: var(--backdrop-blur);
             box-shadow: var(--glass-shadow);
-            transition: all var(--transition-normal) var(--bezier-smooth);
+            overflow: hidden;
+            height: 56px;
+            width: auto;
+            gap: 0;
+            will-change: transform;
         }
 
         /* 翻页按钮 */
         .page-btn {
-            padding: 12px 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(52, 152, 219, 0.2);
-            background: rgba(52, 152, 219, 0.1);
+            padding: 0;
+            border: none;
+            background: transparent;
             color: var(--accent-color);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
             cursor: pointer;
             font-family: inherit;
-            font-size: 14px;
             font-weight: 500;
-            transition: all var(--transition-fast) var(--bezier-smooth); /* 改为smooth */
-            min-width: 100px;
+            transition: all var(--duration-fast) var(--ease-smooth);
+            flex-shrink: 0;
+            width: 56px;
+            height: 56px;
         }
 
         .page-btn:hover:not(.glass-disabled) {
-            background: rgba(52, 152, 219, 0.2);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.15);
+            background: rgba(52, 152, 219, 0.1);
         }
 
         .page-btn:active:not(.glass-disabled) {
-            transform: scale(0.98);
+            transform: scale(0.95);
         }
 
         .page-btn.glass-disabled {
@@ -236,15 +268,99 @@
         }
 
         .page-btn svg {
-            width: 16px;
-            height: 16px;
+            width: 24px;
+            height: 24px;
             stroke: currentColor;
+            transition: stroke var(--duration-fast);
+        }
+
+        /* 章节标题容器 */
+        .chapter-title-container {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 16px;
+            position: relative;
+            overflow: hidden;
+            border-left: 1px solid rgba(0, 0, 0, 0.05);
+            border-right: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .chapter-title-wrapper {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .chapter-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--primary-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            transition: transform var(--duration-normal) var(--ease-smooth);
+            padding: 0 4px;
+            text-align: center;
+            will-change: transform;
+        }
+
+        /* 标题滚动动画 */
+        .chapter-title.scrollable {
+            animation: scrollTitle 15s linear infinite;
+            animation-play-state: paused;
+        }
+
+        .chapter-title.scrollable:hover {
+            animation-play-state: running;
+        }
+
+        @keyframes scrollTitle {
+            0% {
+                transform: translateX(100%);
+            }
+            5% {
+                transform: translateX(100%);
+            }
+            95% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        /* 简化的滚动动画 - 只滚动一次 */
+        .chapter-title.scroll-once {
+            animation: scrollTitleOnce 8s var(--ease-smooth) forwards;
+        }
+
+        @keyframes scrollTitleOnce {
+            0% {
+                transform: translateX(0);
+            }
+            10% {
+                transform: translateX(0);
+            }
+            90% {
+                transform: translateX(calc(-100% + 200px));
+            }
+            100% {
+                transform: translateX(calc(-100% + 200px));
+            }
         }
 
         /* 智能隐藏效果 */
         .corner-control, .page-control-group {
             opacity: 0.9;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.3s var(--ease-smooth);
         }
 
         .reading-area:hover .corner-control,
@@ -254,18 +370,18 @@
             opacity: 1;
         }
 
-        /* 设置面板 - 卡片式设计 */
+        /* 设置面板和章节面板 - 统一圆角 */
         .settings-panel, .chapters-panel {
             position: fixed;
             top: 20px;
             left: 20px;
             right: auto;
-            width: 320px;
+            width: min(320px, 90vw);
             height: calc(100vh - 40px);
             overflow: hidden;
             z-index: 1000;
             transform: translateX(0) translateZ(0);
-            transition: all var(--transition-normal) var(--bezier-smooth);
+            transition: all var(--duration-normal) var(--ease-smooth);
             padding: 20px;
             opacity: 1;
             visibility: visible;
@@ -274,6 +390,7 @@
             border: 1px solid var(--glass-border);
             display: flex;
             flex-direction: column;
+            border-radius: var(--radius-xl);
         }
 
         .settings-panel {
@@ -293,8 +410,8 @@
             transform: translateX(calc(-100% - 20px)) scale(0.95);
         }
 
-        /* 设置面板头部 */
-        .settings-header {
+        /* 面板头部 - 统一圆角 */
+        .settings-header, .chapters-header {
             padding-bottom: 20px;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
             margin-bottom: 20px;
@@ -304,7 +421,7 @@
             flex-shrink: 0;
         }
 
-        .settings-title {
+        .settings-title, .chapters-title {
             font-size: 18px;
             font-weight: 600;
             color: var(--primary-text);
@@ -313,141 +430,70 @@
             gap: 8px;
         }
 
-        .settings-title::before {
+        .settings-title::before, .chapters-title::before {
             content: '';
             width: 4px;
             height: 20px;
             background: var(--accent-color);
-            border-radius: 2px;
+            border-radius: var(--radius-sm);
         }
 
-        .settings-close {
+        .settings-close, .chapters-close {
             width: 36px;
             height: 36px;
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all var(--transition-fast) var(--bezier-smooth);
+            transition: all var(--duration-fast) var(--ease-smooth);
             background: var(--glass-highlight);
         }
 
-        .settings-close:hover {
+        .settings-close:hover, .chapters-close:hover {
             background: var(--accent-light);
         }
 
-        /* 设置面板内容容器 */
-        .settings-content {
+        /* 面板内容容器 */
+        .settings-content, .chapters-list-container {
             flex: 1;
             overflow-y: auto;
             position: relative;
             margin-bottom: 20px;
             padding-right: 8px;
+            -webkit-overflow-scrolling: touch;
         }
 
-        .settings-content::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .settings-content::-webkit-scrollbar-track {
-            background: transparent;
-            border-radius: 3px;
-        }
-
-        .settings-content::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.15);
-            border-radius: 3px;
-            transition: background var(--transition-fast);
-        }
-
-        .settings-content::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.25);
-        }
-
-        /* 章节列表样式 */
-        .chapters-header {
-            padding-bottom: 20px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        .chapters-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--primary-text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .chapters-title::before {
-            content: '';
-            width: 4px;
-            height: 20px;
-            background: var(--accent-color);
-            border-radius: 2px;
-        }
-
-        .chapters-close {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all var(--transition-fast) var(--bezier-smooth);
-            background: var(--glass-highlight);
-        }
-
-        .chapters-close:hover {
-            background: var(--accent-light);
-        }
-
-        /* 章节列表容器 - 内部滚动 */
-        .chapters-list-container {
-            flex: 1;
-            overflow-y: auto;
-            position: relative;
-            margin-bottom: 20px;
-            padding-right: 8px;
-        }
-
-        .chapters-list {
-            /* 列表内容 */
-        }
-
+        .settings-content::-webkit-scrollbar,
         .chapters-list-container::-webkit-scrollbar {
             width: 6px;
         }
 
+        .settings-content::-webkit-scrollbar-track,
         .chapters-list-container::-webkit-scrollbar-track {
             background: transparent;
-            border-radius: 3px;
+            border-radius: var(--radius-full);
         }
 
+        .settings-content::-webkit-scrollbar-thumb,
         .chapters-list-container::-webkit-scrollbar-thumb {
             background: rgba(0, 0, 0, 0.15);
-            border-radius: 3px;
-            transition: background var(--transition-fast);
+            border-radius: var(--radius-full);
+            transition: background var(--duration-fast);
         }
 
+        .settings-content::-webkit-scrollbar-thumb:hover,
         .chapters-list-container::-webkit-scrollbar-thumb:hover {
             background: rgba(0, 0, 0, 0.25);
         }
 
-        /* 章节项 */
+        /* 章节项 - 统一圆角 */
         .chapter-item {
             padding: 14px 18px;
             margin-bottom: 8px;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             cursor: pointer;
-            transition: all var(--transition-fast) var(--transition-smooth);
+            transition: all var(--duration-fast) var(--ease-smooth);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -455,6 +501,7 @@
             font-weight: 400;
             font-size: 14px;
             color: var(--secondary-text);
+            will-change: transform, background-color;
         }
 
         .chapter-item::before {
@@ -466,8 +513,8 @@
             width: 4px;
             height: 0;
             background: var(--accent-color);
-            border-radius: 0 2px 2px 0;
-            transition: all var(--transition-fast) var(--transition-smooth);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            transition: all var(--duration-fast) var(--ease-smooth);
         }
 
         .chapter-item:hover {
@@ -502,12 +549,12 @@
             flex-shrink: 0;
         }
 
+        /* 设置区域 */
         .settings-section {
             margin-bottom: 24px;
             padding-bottom: 20px;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            transition: all var(--transition-normal);
-            transform: translateZ(0);
+            transition: all var(--duration-normal);
         }
 
         .settings-section:last-child {
@@ -523,7 +570,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transform: translateZ(0);
             color: var(--primary-text);
             padding-right: 40px;
         }
@@ -533,14 +579,13 @@
             width: 4px;
             height: 16px;
             background: var(--accent-color);
-            border-radius: 2px;
+            border-radius: var(--radius-sm);
             flex-shrink: 0;
         }
 
         .control-group {
             margin-bottom: 16px;
-            transition: all var(--transition-normal);
-            transform: translateZ(0);
+            transition: all var(--duration-normal);
         }
 
         .control-group:last-child {
@@ -554,35 +599,31 @@
             margin-bottom: 8px;
             font-size: 14px;
             color: var(--secondary-text);
-            transform: translateZ(0);
         }
 
         .control-value {
             font-size: 14px;
             color: var(--accent-color);
             font-weight: 600;
-            transition: all var(--transition-fast);
-            transform: translateZ(0);
+            transition: all var(--duration-fast);
         }
 
-        /* 滑块 */
+        /* 滑块 - 统一圆角 */
         .slider-container {
             display: flex;
             align-items: center;
             gap: 12px;
-            transform: translateZ(0);
         }
 
         .slider {
             flex: 1;
             height: 6px;
-            border-radius: 3px;
+            border-radius: var(--radius-full);
             background: rgba(0, 0, 0, 0.1);
             outline: none;
             -webkit-appearance: none;
             appearance: none;
-            transition: all var(--transition-fast);
-            transform: translateZ(0);
+            transition: all var(--duration-fast);
         }
 
         .slider:hover {
@@ -594,13 +635,12 @@
             appearance: none;
             width: 20px;
             height: 20px;
-            border-radius: 50%;
+            border-radius: var(--radius-full);
             background: white;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
             border: 3px solid var(--accent-color);
-            transition: all var(--transition-fast) var(--bezier-smooth); /* 改为smooth */
-            transform: translateZ(0);
+            transition: all var(--duration-fast) var(--ease-smooth);
         }
 
         .slider::-webkit-slider-thumb:hover {
@@ -608,24 +648,24 @@
         }
 
         .slider::-webkit-slider-thumb:active {
-            transform: scale(0.9);
+            transform: scale(0.95);
         }
 
         .slider::-moz-range-thumb {
             width: 20px;
             height: 20px;
-            border-radius: 50%;
+            border-radius: var(--radius-full);
             background: white;
             cursor: pointer;
             border: 3px solid var(--accent-color);
             box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
-            transition: all var(--transition-fast);
+            transition: all var(--duration-fast);
         }
 
-        /* 按钮 */
+        /* 按钮 - 统一圆角 */
         .btn {
             padding: 12px 20px;
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             border: none;
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
@@ -634,16 +674,15 @@
             font-family: inherit;
             font-size: 14px;
             font-weight: 500;
-            transition: all var(--transition-fast) var(--bezier-smooth); /* 改为smooth */
-            transform: translateZ(0);
+            transition: all var(--duration-fast) var(--ease-smooth);
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             box-shadow: var(--glass-shadow);
-            will-change: transform;
             color: var(--primary-text);
             letter-spacing: -0.2px;
+            will-change: transform;
         }
 
         .btn:hover:not(.glass-disabled) {
@@ -671,7 +710,6 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            transform: translateZ(0);
         }
 
         .font-upload-input {
@@ -685,10 +723,9 @@
             gap: 8px;
             cursor: pointer;
             padding: 12px;
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             background: rgba(0, 0, 0, 0.03);
-            transition: all var(--transition-fast) var(--bezier-smooth);
-            transform: translateZ(0);
+            transition: all var(--duration-fast) var(--ease-smooth);
         }
 
         .font-upload-label:hover {
@@ -703,11 +740,12 @@
         .font-preview {
             margin-top: 12px;
             padding: 16px;
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             background: rgba(0, 0, 0, 0.02);
             border: 1px dashed rgba(0, 0, 0, 0.1);
             font-size: 14px;
             text-align: center;
+            transition: all var(--duration-fast);
         }
 
         .font-preview-text {
@@ -722,7 +760,7 @@
             margin-top: 4px;
         }
 
-        /* 文件上传区域 */
+        /* 文件上传区域 - 统一圆角 */
         .file-upload-area {
             padding: 60px 40px;
             display: flex;
@@ -733,25 +771,21 @@
             height: 100%;
             gap: 24px;
             cursor: pointer;
-            transition: all var(--transition-normal);
-            border-radius: 20px;
-            border: 2px dashed rgba(52, 152, 219, 0.2);
+            transition: all var(--duration-normal);
+            border-radius: var(--radius-xl);
             background: rgba(255, 255, 255, 0.5);
             margin: 16px;
-            transform: translateZ(0);
         }
 
         .file-upload-area:hover {
             background: rgba(255, 255, 255, 0.7);
-            border-color: rgba(52, 152, 219, 0.4);
         }
 
         .upload-icon {
             font-size: 64px;
             color: rgba(52, 152, 219, 0.5);
             margin-bottom: 16px;
-            transition: all var(--transition-normal) var(--bezier-smooth); /* 改为smooth */
-            transform: translateZ(0);
+            transition: all var(--duration-normal) var(--ease-smooth);
         }
 
         .file-upload-area:hover .upload-icon {
@@ -781,7 +815,7 @@
             margin-top: 10px;
             padding: 8px 12px;
             background: rgba(0, 0, 0, 0.03);
-            border-radius: 6px;
+            border-radius: var(--radius-md);
         }
 
         /* 加载动画 */
@@ -800,8 +834,7 @@
             z-index: 2000;
             opacity: 0;
             visibility: hidden;
-            transition: all var(--transition-normal) var(--bezier-smooth);
-            transform: translateZ(0);
+            transition: all var(--duration-normal) var(--ease-smooth);
         }
 
         .loading-overlay.active {
@@ -812,16 +845,14 @@
         .loading-animation {
             display: flex;
             gap: 12px;
-            transform: translateZ(0);
         }
 
         .loading-block {
             width: 24px;
             height: 24px;
             background: linear-gradient(135deg, var(--accent-color), #2ecc71);
-            border-radius: 6px;
-            animation: loading-wave 1.5s ease-in-out infinite;
-            transform: translateZ(0);
+            border-radius: var(--radius-md);
+            animation: loading-wave 1.5s var(--ease-bounce) infinite;
         }
 
         .loading-block:nth-child(2) {
@@ -849,28 +880,29 @@
             }
         }
 
-        /* 提示条 */
+        /* 提示条 - 统一圆角 */
         .toast {
             position: fixed;
             top: 30px;
             left: 50%;
-            transform: translateX(-50%) translateY(-100px) translateZ(0);
+            transform: translateX(-50%) translateY(-100px);
             padding: 18px 32px;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             z-index: 2000;
-            transition: transform var(--transition-normal) var(--bezier-smooth); /* 改为smooth */
-            max-width: 400px;
+            transition: transform var(--duration-normal) var(--ease-bounce), opacity var(--duration-normal);
+            max-width: min(400px, 90vw);
             text-align: center;
             opacity: 0;
             font-weight: 500;
+            will-change: transform, opacity;
         }
 
         .toast.show {
-            transform: translateX(-50%) translateY(0) translateZ(0);
+            transform: translateX(-50%) translateY(0);
             opacity: 1;
         }
 
@@ -899,249 +931,12 @@
             z-index: 999;
             opacity: 0;
             visibility: hidden;
-            transition: all var(--transition-normal) var(--bezier-smooth);
+            transition: all var(--duration-normal) var(--ease-smooth);
         }
 
         .settings-mask.active, .chapters-mask.active {
             opacity: 1;
             visibility: visible;
-        }
-
-        /* 响应式设计 */
-        @media (max-width: 768px) {
-            .app-container {
-                padding: 12px;
-            }
-            
-            .content-container {
-                padding: 40px 20px;
-            }
-            
-            .corner-control.top-left {
-                top: 15px;
-                left: 15px;
-            }
-            
-            .corner-control.top-right {
-                top: 15px;
-                right: 15px;
-            }
-            
-            .corner-control.bottom-right {
-                bottom: 15px;
-                right: 15px;
-            }
-            
-            .corner-btn {
-                width: 44px;
-                height: 44px;
-                border-radius: 12px;
-            }
-            
-            .page-control-group {
-                padding: 8px;
-                gap: 8px;
-            }
-            
-            .page-btn {
-                padding: 10px 16px;
-                min-width: 90px;
-                font-size: 13px;
-            }
-            
-            .settings-panel, .chapters-panel {
-                width: calc(100vw - 40px);
-                height: calc(100vh - 40px);
-                top: 20px;
-            }
-            
-            .chapters-panel {
-                left: 20px;
-                right: 20px;
-                width: calc(100vw - 40px);
-            }
-            
-            .settings-panel {
-                padding: 16px;
-            }
-            
-            .settings-header, .chapters-header {
-                padding-bottom: 16px;
-                margin-bottom: 16px;
-            }
-            
-            .settings-content, .chapters-list-container {
-                margin-bottom: 16px;
-            }
-            
-            .settings-section {
-                margin-bottom: 20px;
-                padding-bottom: 16px;
-            }
-            
-            .control-group {
-                margin-bottom: 14px;
-            }
-            
-            .storage-controls .btn {
-                min-width: 100%;
-                font-size: 12px;
-                padding: 8px 10px;
-            }
-            
-            .btn {
-                padding: 10px 16px;
-                font-size: 13px;
-            }
-            
-            .section-title {
-                font-size: 15px;
-                padding-right: 30px;
-            }
-            
-            .font-preview {
-                padding: 12px;
-            }
-            
-            .font-preview-text {
-                font-size: 14px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .page-btn span {
-                display: none;
-            }
-            
-            .page-btn {
-                min-width: auto;
-                padding: 12px;
-            }
-            
-            .settings-panel, .chapters-panel {
-                width: calc(100vw - 24px);
-                height: calc(100vh - 24px);
-                right: 12px;
-                left: 12px;
-                top: 12px;
-                padding: 16px;
-            }
-            
-            .chapters-panel {
-                left: 12px;
-                right: 12px;
-                width: calc(100vw - 24px);
-            }
-            
-            .content-container {
-                padding: 30px 16px;
-            }
-            
-            .file-upload-area {
-                padding: 40px 20px;
-            }
-            
-            .corner-control.top-left {
-                left: 12px;
-            }
-            
-            .corner-control.top-right {
-                right: 12px;
-            }
-            
-            .corner-control.bottom-right {
-                right: 12px;
-                bottom: 12px;
-            }
-            
-            .settings-header, .chapters-header {
-                padding-bottom: 14px;
-                margin-bottom: 14px;
-            }
-            
-            .settings-title, .chapters-title {
-                font-size: 16px;
-            }
-            
-            .settings-close, .chapters-close {
-                width: 32px;
-                height: 32px;
-            }
-            
-            .settings-content, .chapters-list-container {
-                margin-bottom: 14px;
-            }
-            
-            .settings-section {
-                margin-bottom: 18px;
-                padding-bottom: 14px;
-            }
-            
-            .control-group {
-                margin-bottom: 12px;
-            }
-            
-            .control-label {
-                font-size: 13px;
-            }
-            
-            .control-value {
-                font-size: 13px;
-            }
-            
-            .btn {
-                padding: 8px 14px;
-                font-size: 12px;
-            }
-            
-            .font-upload-label {
-                padding: 10px;
-                font-size: 13px;
-            }
-            
-            .storage-info {
-                font-size: 11px;
-                padding: 6px 10px;
-            }
-            
-            .chapters-info {
-                padding-top: 14px;
-                font-size: 11px;
-            }
-            
-            .chapter-item {
-                padding: 12px 16px;
-                font-size: 13px;
-            }
-        }
-
-        @media (max-height: 600px) {
-            .settings-panel, .chapters-panel {
-                height: calc(100vh - 20px);
-                top: 10px;
-            }
-            
-            .settings-content {
-                max-height: 60vh;
-            }
-            
-            .chapters-list-container {
-                max-height: 60vh;
-            }
-            
-            .settings-section {
-                margin-bottom: 16px;
-                padding-bottom: 12px;
-            }
-            
-            .control-group {
-                margin-bottom: 10px;
-            }
-            
-            .section-title {
-                margin-bottom: 12px;
-                font-size: 15px;
-            }
         }
 
         /* 滚动触发动画 */
@@ -1157,7 +952,16 @@
         }
 
         .fade-in-up {
-            animation: fadeInUp 0.6s var(--bezier-smooth) forwards;
+            animation: fadeInUp 0.6s var(--ease-smooth) forwards;
+        }
+
+        /* 性能优化：减少重绘 */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
@@ -1184,7 +988,7 @@
                     </svg>
                 </div>
                 <h2 style="font-weight: 600; margin-bottom: 8px;">拖放TXT文件到此处或点击选择文件</h2>
-                <p style="color: var(--secondary-text); max-width: 400px; line-height: 1.6;">支持UTF-8/GBK编码，自动解析章节结构</p>
+                <p style="color: var(--secondary-text); max-width: 400px; line-height: 1.6;">仅支持UTF-8编码的TXT文件</p>
                 <input type="file" id="fileInput" accept=".txt" style="display: none;">
                 <button class="btn btn-primary" id="selectFileBtn">选择TXT文件</button>
                 
@@ -1228,15 +1032,21 @@
     
     <!-- 翻页按钮 - 右下角 -->
     <div class="corner-control bottom-right">
-        <div class="page-control-group glass">
+        <div class="page-control-group glass" id="pageControlGroup">
             <button class="page-btn" id="prevPageBtn" title="上一章">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="15 18 9 12 15 6"/>
                 </svg>
-                <span>上一章</span>
             </button>
+            
+            <!-- 章节标题容器 -->
+            <div class="chapter-title-container">
+                <div class="chapter-title-wrapper">
+                    <div class="chapter-title" id="chapterTitle">请选择章节</div>
+                </div>
+            </div>
+            
             <button class="page-btn" id="nextPageBtn" title="下一章">
-                <span>下一章</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="9 18 15 12 9 6"/>
                 </svg>
@@ -1385,12 +1195,19 @@
             <div class="loading-block"></div>
             <div class="loading-block"></div>
         </div>
-</div>
+    </div>
 
     <!-- 提示条 -->
     <div class="toast" id="toast"></div>
 
     <script>
+        // 性能优化：使用requestAnimationFrame进行动画
+        const raf = window.requestAnimationFrame || 
+                    window.webkitRequestAnimationFrame || 
+                    window.mozRequestAnimationFrame || 
+                    window.msRequestAnimationFrame || 
+                    function(callback) { return setTimeout(callback, 1000/60); };
+
         // 全局变量
         const APP = {
             currentNovel: null,
@@ -1408,9 +1225,12 @@
             isAnimating: false,
             observer: null,
             db: null,
-            localStorageKey: 'novelReader_',
             indexedDBName: 'NovelReaderDB',
-            indexedDBVersion: 2
+            indexedDBVersion: 2,
+            titleAnimationTimeout: null,
+            isTitleScrolling: false,
+            // 性能优化：防抖计时器
+            debounceTimers: new Map()
         };
 
         // DOM元素引用
@@ -1426,6 +1246,7 @@
             settingsBtn: document.getElementById('settingsBtn'),
             prevPageBtn: document.getElementById('prevPageBtn'),
             nextPageBtn: document.getElementById('nextPageBtn'),
+            pageControlGroup: document.getElementById('pageControlGroup'),
             settingsPanel: document.getElementById('settingsPanel'),
             chaptersPanel: document.getElementById('chaptersPanel'),
             settingsClose: document.getElementById('settingsClose'),
@@ -1458,8 +1279,25 @@
             importData: document.getElementById('importData'),
             storageInfo: document.getElementById('storageInfo'),
             historyList: document.getElementById('historyList'),
-            historyItems: document.getElementById('historyItems')
+            historyItems: document.getElementById('historyItems'),
+            chapterTitle: document.getElementById('chapterTitle')
         };
+
+        // 防抖函数 - 性能优化
+        function debounce(func, wait, key) {
+            return function(...args) {
+                if (APP.debounceTimers.has(key)) {
+                    clearTimeout(APP.debounceTimers.get(key));
+                }
+                
+                const timer = setTimeout(() => {
+                    func.apply(this, args);
+                    APP.debounceTimers.delete(key);
+                }, wait);
+                
+                APP.debounceTimers.set(key, timer);
+            };
+        }
 
         // 初始化应用
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1467,13 +1305,10 @@
             await initDatabase();
             await loadSettings();
             await loadReadingHistory();
-            checkWindowSize();
             initIntersectionObserver();
             updateStorageInfo();
             
-            window.addEventListener('resize', checkWindowSize);
-            window.addEventListener('orientationchange', checkWindowSize);
-            
+            // 初始状态
             dom.settingsPanel.classList.add('collapsed');
             dom.chaptersPanel.classList.add('collapsed');
             
@@ -1546,12 +1381,12 @@
                 }
             });
             
-            // 样式控制
-            dom.fontSize.addEventListener('input', updateFontSize);
-            dom.fontWeight.addEventListener('input', updateFontWeight);
-            dom.letterSpacing.addEventListener('input', updateLetterSpacing);
-            dom.lineHeight.addEventListener('input', updateLineHeight);
-            dom.paragraphSpacing.addEventListener('input', updateParagraphSpacing);
+            // 样式控制 - 使用防抖
+            dom.fontSize.addEventListener('input', debounce(updateFontSize, 100, 'fontSize'));
+            dom.fontWeight.addEventListener('input', debounce(updateFontWeight, 100, 'fontWeight'));
+            dom.letterSpacing.addEventListener('input', debounce(updateLetterSpacing, 100, 'letterSpacing'));
+            dom.lineHeight.addEventListener('input', debounce(updateLineHeight, 100, 'lineHeight'));
+            dom.paragraphSpacing.addEventListener('input', debounce(updateParagraphSpacing, 100, 'paragraphSpacing'));
             
             // 重置按钮
             dom.resetTextStyle.addEventListener('click', resetTextStyle);
@@ -1562,8 +1397,8 @@
             // 字体上传
             dom.fontUpload.addEventListener('change', handleFontUpload);
             
-            // 内容区域滚动保存
-            dom.contentContainer.addEventListener('scroll', saveScrollPosition);
+            // 内容区域滚动保存 - 使用防抖
+            dom.contentContainer.addEventListener('scroll', debounce(saveScrollPosition, 500, 'scroll'));
             
             // 存储管理
             dom.clearNovelData.addEventListener('click', clearNovelData);
@@ -1579,6 +1414,31 @@
             
             dom.importData.addEventListener('click', () => importInput.click());
             importInput.addEventListener('change', handleDataImport);
+            
+            // 章节标题悬停事件
+            dom.chapterTitle.addEventListener('mouseenter', () => {
+                if (dom.chapterTitle.classList.contains('scrollable')) {
+                    dom.chapterTitle.style.animationPlayState = 'paused';
+                }
+            });
+            
+            dom.chapterTitle.addEventListener('mouseleave', () => {
+                if (dom.chapterTitle.classList.contains('scrollable')) {
+                    dom.chapterTitle.style.animationPlayState = 'running';
+                }
+            });
+            
+            // 性能优化：监听页面可见性变化
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    saveProgress();
+                }
+            });
+            
+            // 页面卸载前保存数据
+            window.addEventListener('beforeunload', () => {
+                saveProgress();
+            });
         }
 
         // 初始化IndexedDB数据库
@@ -1601,25 +1461,21 @@
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
                     
-                    // 创建小说内容存储
                     if (!db.objectStoreNames.contains('novels')) {
                         const novelsStore = db.createObjectStore('novels', { keyPath: 'id' });
                         novelsStore.createIndex('name', 'name', { unique: false });
                         novelsStore.createIndex('lastRead', 'lastRead', { unique: false });
                     }
                     
-                    // 创建进度存储
                     if (!db.objectStoreNames.contains('progress')) {
                         const progressStore = db.createObjectStore('progress', { keyPath: 'novelId' });
                         progressStore.createIndex('lastRead', 'lastRead', { unique: false });
                     }
                     
-                    // 创建字体存储
                     if (!db.objectStoreNames.contains('fonts')) {
                         db.createObjectStore('fonts', { keyPath: 'id' });
                     }
                     
-                    // 创建设置存储
                     if (!db.objectStoreNames.contains('settings')) {
                         db.createObjectStore('settings', { keyPath: 'key' });
                     }
@@ -1640,14 +1496,11 @@
             // 保存小说数据
             static async saveNovel(novel) {
                 try {
-                    // 判断小说内容大小
                     const contentSize = JSON.stringify(novel.chapters).length;
                     
                     if (contentSize > 1024 * 1024) {
-                        // 大数据使用 IndexedDB
                         return await this.saveToIndexedDB('novels', novel);
                     } else {
-                        // 小数据使用 LocalStorage
                         return this.saveToLocalStorage(`novel_${novel.id}`, novel);
                     }
                 } catch (error) {
@@ -1666,7 +1519,6 @@
                 };
                 
                 try {
-                    // 进度数据较小，使用 LocalStorage
                     return this.saveToLocalStorage(`progress_${novelId}`, progress);
                 } catch (error) {
                     console.error('保存进度失败:', error);
@@ -1677,7 +1529,6 @@
             // 保存设置
             static async saveSettings(settings) {
                 try {
-                    // 设置数据较小，使用 LocalStorage
                     return this.saveToLocalStorage('settings', settings);
                 } catch (error) {
                     console.error('保存设置失败:', error);
@@ -1688,7 +1539,6 @@
             // 保存字体
             static async saveFont(font) {
                 try {
-                    // 字体文件可能较大，使用 IndexedDB
                     return await this.saveToIndexedDB('fonts', font);
                 } catch (error) {
                     console.error('保存字体失败:', error);
@@ -1699,11 +1549,9 @@
             // 加载小说数据
             static async loadNovel(novelId) {
                 try {
-                    // 先尝试 LocalStorage
                     const novel = this.loadFromLocalStorage(`novel_${novelId}`);
                     if (novel) return novel;
                     
-                    // 再尝试 IndexedDB
                     return await this.loadFromIndexedDB('novels', novelId);
                 } catch (error) {
                     console.error('加载小说失败:', error);
@@ -1722,7 +1570,6 @@
                         if (key.startsWith('novel_')) {
                             const novel = JSON.parse(localStorage.getItem(key));
                             if (novel && novel.name) {
-                                // 只保存元数据，不包含大内容
                                 novels.push({
                                     id: novel.id,
                                     name: novel.name,
@@ -1797,11 +1644,9 @@
             // 删除小说数据
             static async deleteNovel(novelId) {
                 try {
-                    // 删除 LocalStorage 中的数据
                     localStorage.removeItem(`novel_${novelId}`);
                     localStorage.removeItem(`progress_${novelId}`);
                     
-                    // 删除 IndexedDB 中的数据
                     if (APP.db) {
                         const transaction = APP.db.transaction(['novels', 'progress'], 'readwrite');
                         transaction.objectStore('novels').delete(novelId);
@@ -1819,7 +1664,6 @@
             // 删除所有小说数据
             static async deleteAllNovels() {
                 try {
-                    // 清除 LocalStorage 中的小说数据
                     for (let i = localStorage.length - 1; i >= 0; i--) {
                         const key = localStorage.key(i);
                         if (key.startsWith('novel_') || key.startsWith('progress_')) {
@@ -1827,7 +1671,6 @@
                         }
                     }
                     
-                    // 清除 IndexedDB 中的小说数据
                     if (APP.db) {
                         const transaction = APP.db.transaction(['novels', 'progress'], 'readwrite');
                         transaction.objectStore('novels').clear();
@@ -1845,16 +1688,13 @@
             // 删除所有设置
             static deleteAllSettings() {
                 try {
-                    // 清除 LocalStorage 中的设置
                     localStorage.removeItem('settings');
                     
-                    // 清除 IndexedDB 中的设置
                     if (APP.db) {
                         const transaction = APP.db.transaction(['settings'], 'readwrite');
                         transaction.objectStore('settings').clear();
                     }
                     
-                    // 清除字体
                     this.deleteFont();
                     
                     return true;
@@ -1867,7 +1707,6 @@
             // 删除字体
             static async deleteFont() {
                 try {
-                    // 清除 IndexedDB 中的字体
                     if (APP.db) {
                         const transaction = APP.db.transaction(['fonts'], 'readwrite');
                         transaction.objectStore('fonts').clear();
@@ -1887,7 +1726,6 @@
                     let totalSize = 0;
                     let itemsCount = 0;
                     
-                    // 计算 LocalStorage 使用情况
                     for (let i = 0; i < localStorage.length; i++) {
                         const key = localStorage.key(i);
                         const value = localStorage.getItem(key);
@@ -1895,7 +1733,6 @@
                         itemsCount++;
                     }
                     
-                    // 计算 IndexedDB 使用情况
                     if (APP.db && 'estimate' in APP.db) {
                         const estimate = await APP.db.estimate();
                         totalSize += estimate.usage;
@@ -2283,120 +2120,19 @@
             }
         }
 
-        // 读取文件内容，自动检测编码
+        // 读取文件内容
         function readFileContent(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 
                 reader.onload = (event) => {
-                    // 首先尝试UTF-8（大多数现代文件）
-                    const utf8Content = event.target.result;
-                    
-                    // 检查是否是有效的UTF-8文本
-                    if (typeof utf8Content === 'string') {
-                        // 检查是否有中文字符
-                        const hasChinese = /[\u4e00-\u9fa5]/.test(utf8Content);
-                        // 检查是否有UTF-8解码错误的占位符
-                        const hasMojibake = / /.test(utf8Content);
-                        // 检查是否有乱码的常见模式
-                        const hasGibberish = /[\u0000-\u001F\u0080-\u009F]/.test(utf8Content);
-                        
-                        // 如果有中文字符且没有乱码，使用UTF-8
-                        if (hasChinese && !hasMojibake && !hasGibberish) {
-                            console.log('使用UTF-8编码');
-                            resolve(utf8Content);
-                            return;
-                        }
-                        
-                        // 如果没有中文字符，可能是英文小说或编码问题
-                        if (!hasChinese && utf8Content.length > 0) {
-                            // 尝试其他编码
-                            console.log('未检测到中文字符，尝试其他编码');
-                        }
-                    }
-                    
-                    // 如果UTF-8解码不理想，尝试其他编码
-                    const reader2 = new FileReader();
-                    reader2.onload = (e2) => {
-                        try {
-                            // 先尝试GBK（最常见的中文ANSI编码）
-                            const decoderGBK = new TextDecoder('GBK');
-                            const gbkContent = decoderGBK.decode(e2.target.result);
-                            
-                            // 检查GBK解码结果
-                            const gbkHasChinese = /[\u4e00-\u9fa5]/.test(gbkContent);
-                            const gbkHasMojibake = / /.test(gbkContent);
-                            
-                            if (gbkHasChinese && !gbkHasMojibake) {
-                                console.log('使用GBK编码');
-                                resolve(gbkContent);
-                                return;
-                            }
-                            
-                            // 尝试GB18030（扩展的GBK）
-                            try {
-                                const decoderGB18030 = new TextDecoder('GB18030');
-                                const gb18030Content = decoderGB18030.decode(e2.target.result);
-                                const gb18030HasChinese = /[\u4e00-\u9fa5]/.test(gb18030Content);
-                                
-                                if (gb18030HasChinese) {
-                                    console.log('使用GB18030编码');
-                                    resolve(gb18030Content);
-                                    return;
-                                }
-                            } catch (gb18030Error) {
-                                // GB18030失败，继续尝试其他编码
-                            }
-                            
-                            // 尝试Big5（繁体中文）
-                            try {
-                                const decoderBig5 = new TextDecoder('Big5');
-                                const big5Content = decoderBig5.decode(e2.target.result);
-                                const big5HasChinese = /[\u4e00-\u9fa5]/.test(big5Content);
-                                
-                                if (big5HasChinese) {
-                                    console.log('使用Big5编码');
-                                    resolve(big5Content);
-                                    return;
-                                }
-                            } catch (big5Error) {
-                                // Big5失败，继续尝试其他编码
-                            }
-                            
-                            // 最后尝试ISO-8859-1（西欧语言）
-                            try {
-                                const decoderLatin1 = new TextDecoder('ISO-8859-1');
-                                const latin1Content = decoderLatin1.decode(e2.target.result);
-                                console.log('使用ISO-8859-1编码');
-                                resolve(latin1Content);
-                                return;
-                            } catch (latin1Error) {
-                                // 所有编码都失败，返回UTF-8内容
-                                console.log('所有编码尝试失败，使用原始UTF-8内容');
-                                resolve(utf8Content || '');
-                            }
-                        } catch (error) {
-                            console.error('解码失败:', error);
-                            // 如果解码失败，返回原始内容
-                            resolve(utf8Content || '');
-                        }
-                    };
-                    
-                    reader2.onerror = () => {
-                        console.error('读取文件为ArrayBuffer失败');
-                        // 如果读取失败，返回原始内容
-                        resolve(utf8Content || '');
-                    };
-                    
-                    // 重新读取为ArrayBuffer以便尝试不同编码
-                    reader2.readAsArrayBuffer(file);
+                    resolve(event.target.result);
                 };
                 
                 reader.onerror = () => {
                     reject(new Error('文件读取失败'));
                 };
                 
-                // 先尝试UTF-8
                 reader.readAsText(file, 'UTF-8');
             });
         }
@@ -2406,17 +2142,14 @@
             const file = event.target.files[0];
             if (!file) return;
             
-            // 检查文件类型
             if (!file.name.toLowerCase().endsWith('.txt')) {
                 showToast('请选择TXT格式的文件', 'error');
                 return;
             }
             
-            // 显示加载动画
             showLoading(true);
             
             try {
-                // 生成小说唯一标识
                 const novelId = await generateFileHash(file);
                 APP.currentNovel = {
                     id: novelId,
@@ -2425,30 +2158,20 @@
                     lastModified: file.lastModified
                 };
                 
-                // 使用增强的编码检测函数解析文件内容
                 const content = await readFileContent(file);
                 
-                // 检查内容是否为空
                 if (!content || content.trim().length === 0) {
-                    throw new Error('文件内容为空或无法解码');
+                    throw new Error('文件内容为空');
                 }
                 
-                // 显示编码调试信息
-                console.log('文件内容前200字符:', content.substring(0, 200));
-                console.log('文件内容长度:', content.length);
-                
-                // 解析章节
                 APP.chapters = parseChapters(content);
                 
-                // 检查是否成功解析到章节
                 if (APP.chapters.length === 0) {
                     throw new Error('无法解析章节结构，请检查文件格式');
                 }
                 
-                // 保存小说数据
                 await saveNovel();
                 
-                // 加载阅读进度
                 const progress = StorageManager.loadProgress(novelId);
                 
                 if (progress) {
@@ -2459,29 +2182,23 @@
                     APP.scrollPosition = 0;
                 }
                 
-                // 更新UI
                 updateChaptersList();
                 renderChapter();
                 showContentArea();
                 
-                // 显示成功消息
                 showToast(`《${file.name}》加载成功，共${APP.chapters.length}章`, 'success');
                 
             } catch (error) {
                 console.error('文件加载失败:', error);
                 showToast('文件加载失败: ' + error.message, 'error');
             } finally {
-                // 隐藏加载动画
                 showLoading(false);
-                
-                // 重置文件输入
                 dom.fileInput.value = '';
             }
         }
 
         // 生成文件哈希作为唯一标识
         async function generateFileHash(file) {
-            // 使用文件名+大小+修改时间作为标识
             return `${file.name}_${file.size}_${file.lastModified}`.replace(/\s+/g, '_');
         }
 
@@ -2489,10 +2206,8 @@
         function parseChapters(content) {
             const chapters = [];
             
-            // 增强的章节正则表达式，匹配更多格式
             const chapterRegex = /^(第[零一二三四五六七八九十百千万\d]+章|第[零一二三四五六七八九十百千万\d]+回|第[零一二三四五六七八九十百千万\d]+节|第[零一二三四五六七八九十百千万\d]+卷|第[零一二三四五六七八九十百千万\d]+篇|[上下]?卷之[零一二三四五六七八九十百千万\d]+|CHAPTER\s+\d+|Chapter\s+\d+|\d+\.\s+|【.*?】|\[.*?\])/im;
             
-            // 按行分割内容
             const lines = content.split(/\r?\n/);
             let currentChapter = { title: '开始', content: '' };
             let inChapter = false;
@@ -2502,29 +2217,24 @@
                 
                 if (line === '') continue;
                 
-                // 检测是否是章节标题
                 if (chapterRegex.test(line)) {
-                    // 保存前一章
                     if (inChapter) {
                         chapters.push({ ...currentChapter });
                     } else {
                         inChapter = true;
                     }
                     
-                    // 开始新章节
                     currentChapter = {
                         title: line,
                         content: ''
                     };
                 } else if (inChapter) {
-                    // 添加到当前章节内容
                     if (currentChapter.content) {
                         currentChapter.content += '\n' + line;
                     } else {
                         currentChapter.content = line;
                     }
                 } else {
-                    // 在遇到第一个章节前的文本作为"开始"章节
                     if (currentChapter.content) {
                         currentChapter.content += '\n' + line;
                     } else {
@@ -2533,12 +2243,10 @@
                 }
             }
             
-            // 添加最后一章
             if (currentChapter.content) {
                 chapters.push({ ...currentChapter });
             }
             
-            // 如果没有检测到章节，则将整个内容作为一章
             if (chapters.length === 0) {
                 chapters.push({
                     title: '全文',
@@ -2566,7 +2274,7 @@
                     renderChapter();
                     updateChaptersList();
                     saveProgress();
-                    toggleChaptersPanel(); // 选择章节后自动关闭面板
+                    toggleChaptersPanel();
                 });
                 
                 dom.chaptersList.appendChild(item);
@@ -2580,7 +2288,6 @@
             const chapter = APP.chapters[APP.currentChapterIndex];
             let contentHTML = '';
             
-            // 处理章节内容，保留原始换行
             const paragraphs = chapter.content.split(/\n+/);
             
             paragraphs.forEach(paragraph => {
@@ -2591,34 +2298,61 @@
             
             dom.content.innerHTML = contentHTML;
             
-            // 应用当前样式
+            updateChapterTitle(chapter.title);
+            
             applyTextStyles();
             
-            // 更新翻页按钮状态
             updateNavButtons();
             
-            // 观察所有段落以触发渐显动画
-            setTimeout(() => {
+            // 使用requestAnimationFrame优化动画
+            raf(() => {
                 const paragraphs = dom.content.querySelectorAll('p');
                 paragraphs.forEach(p => {
-                    // 先清除之前的动画类
                     p.classList.remove('fade-in');
-                    // 观察元素
                     if (APP.observer) {
                         APP.observer.observe(p);
                     }
                 });
-            }, 100);
+            });
             
-            // 滚动到保存的位置
             if (APP.scrollPosition > 0) {
                 setTimeout(() => {
                     dom.contentContainer.scrollTop = APP.scrollPosition;
                 }, 50);
             }
             
-            // 更新章节列表中的当前章节高亮
             updateChaptersList();
+        }
+
+        // 更新章节标题显示
+        function updateChapterTitle(title) {
+            dom.chapterTitle.textContent = title || '无标题';
+            
+            dom.chapterTitle.classList.remove('scrollable', 'scroll-once');
+            
+            if (APP.titleAnimationTimeout) {
+                clearTimeout(APP.titleAnimationTimeout);
+                APP.titleAnimationTimeout = null;
+            }
+            
+            dom.chapterTitle.style.transform = 'translateX(0)';
+            dom.chapterTitle.style.animation = '';
+            
+            setTimeout(() => {
+                const containerWidth = dom.chapterTitle.parentElement.offsetWidth;
+                const titleWidth = dom.chapterTitle.scrollWidth;
+                
+                if (titleWidth > containerWidth) {
+                    APP.titleAnimationTimeout = setTimeout(() => {
+                        dom.chapterTitle.classList.add('scroll-once');
+                        
+                        APP.titleAnimationTimeout = setTimeout(() => {
+                            dom.chapterTitle.classList.remove('scroll-once');
+                            dom.chapterTitle.style.transform = 'translateX(0)';
+                        }, 8000);
+                    }, 2000);
+                }
+            }, 100);
         }
 
         // 显示内容区域
@@ -2686,7 +2420,6 @@
             dom.content.style.letterSpacing = `${APP.letterSpacing}px`;
             dom.content.style.lineHeight = APP.lineHeight;
             
-            // 设置段落间距
             const paragraphs = dom.content.querySelectorAll('p');
             paragraphs.forEach(p => {
                 p.style.marginBottom = `${APP.paragraphSpacing}em`;
@@ -2772,7 +2505,7 @@
             
             try {
                 await StorageManager.deleteFont();
-                document.body.style.fontFamily = "'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+                document.body.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif";
                 updateFontPreview();
                 showToast('字体已恢复为默认', 'success');
             } catch (error) {
@@ -2789,16 +2522,11 @@
             showToast('所有设置已重置', 'success');
         }
 
-        // ============================================
-        // 修复部分：改进字体处理，支持OTF和WOFF格式
-        // ============================================
-        
         // 处理字体上传
         async function handleFontUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
             
-            // 检查文件类型 - 支持TTF、OTF、WOFF、WOFF2
             const validExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
             const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
             
@@ -2810,10 +2538,8 @@
             showLoading(true);
             
             try {
-                // 创建文件读取器
                 const reader = new FileReader();
                 
-                // 读取文件为ArrayBuffer，这样更可靠
                 const fontData = await new Promise((resolve, reject) => {
                     reader.onload = (e) => {
                         resolve(e.target.result);
@@ -2826,10 +2552,8 @@
                     reader.readAsArrayBuffer(file);
                 });
                 
-                // 将ArrayBuffer转换为base64
                 const base64Font = arrayBufferToBase64(fontData);
                 
-                // 根据文件类型确定格式
                 let fontFormat;
                 switch (fileExtension) {
                     case '.ttf':
@@ -2848,7 +2572,6 @@
                         fontFormat = 'truetype';
                 }
                 
-                // 创建字体对象
                 const font = {
                     id: 'userFont',
                     name: file.name.replace(fileExtension, ''),
@@ -2859,14 +2582,10 @@
                     size: file.size
                 };
                 
-                // 保存字体到存储
                 APP.customFont = font;
                 await StorageManager.saveFont(font);
                 
-                // 应用字体
                 applyCustomFont();
-                
-                // 更新字体预览
                 updateFontPreview();
                 
                 showToast(`字体"${font.name}"上传成功`, 'success');
@@ -2894,22 +2613,17 @@
             if (!APP.customFont) return;
             
             try {
-                // 清理之前的自定义字体
                 const existingStyles = document.querySelectorAll('[data-custom-font-style]');
                 existingStyles.forEach(style => style.remove());
                 
-                // 创建唯一的字体家族名称
                 const fontFamilyName = 'CustomFont_' + Date.now();
                 
-                // 创建CSS样式
                 const style = document.createElement('style');
                 style.setAttribute('data-custom-font-style', 'true');
                 
-                // 创建base64字体URL
                 const fontData = APP.customFont.data;
                 const fontFormat = APP.customFont.format;
                 
-                // 创建CSS字体规则
                 const fontFaceRule = `
                 @font-face {
                     font-family: '${fontFamilyName}';
@@ -2923,7 +2637,6 @@
                 style.textContent = fontFaceRule;
                 document.head.appendChild(style);
                 
-                // 等待字体加载完成
                 const testElement = document.createElement('span');
                 testElement.style.fontFamily = fontFamilyName;
                 testElement.style.position = 'absolute';
@@ -2932,25 +2645,19 @@
                 testElement.textContent = '测试字体加载';
                 document.body.appendChild(testElement);
                 
-                // 检查字体是否加载成功
                 setTimeout(() => {
                     const loaded = document.fonts.check(`16px ${fontFamilyName}`);
                     
                     if (loaded) {
-                        // 字体加载成功，应用字体
-                        document.body.style.fontFamily = `'${fontFamilyName}', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+                        document.body.style.fontFamily = `'${fontFamilyName}', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif`;
                         console.log(`字体加载成功: ${fontFamilyName}`);
                         showToast(`字体"${APP.customFont.name}"加载成功`, 'success');
                     } else {
-                        // 字体加载失败，尝试备用方法
                         console.warn('字体加载失败，尝试备用方法');
                         applyCustomFontFallback(fontFamilyName, fontData, fontFormat);
                     }
                     
-                    // 清理测试元素
                     document.body.removeChild(testElement);
-                    
-                    // 更新字体预览
                     updateFontPreview();
                     
                 }, 100);
@@ -2964,7 +2671,6 @@
         // 备用方法：使用FontFace API
         function applyCustomFontFallback(fontFamilyName, fontData, fontFormat) {
             try {
-                // 移除之前的字体定义
                 const existingFonts = document.fonts.values();
                 for (const font of existingFonts) {
                     if (font.family.startsWith('CustomFont_')) {
@@ -2972,7 +2678,6 @@
                     }
                 }
                 
-                // 创建Blob URL
                 const binary = atob(fontData);
                 const array = new Uint8Array(binary.length);
                 for (let i = 0; i < binary.length; i++) {
@@ -2982,7 +2687,6 @@
                 const blob = new Blob([array], { type: `font/${APP.customFont.fileType.toLowerCase()}` });
                 const fontUrl = URL.createObjectURL(blob);
                 
-                // 使用FontFace API
                 const fontFace = new FontFace(fontFamilyName, `url(${fontUrl}) format('${fontFormat}')`, {
                     style: 'normal',
                     weight: '400',
@@ -2991,11 +2695,8 @@
                 
                 fontFace.load().then((loadedFace) => {
                     document.fonts.add(loadedFace);
+                    document.body.style.fontFamily = `'${fontFamilyName}', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif`;
                     
-                    // 应用字体
-                    document.body.style.fontFamily = `'${fontFamilyName}', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-                    
-                    // 清理URL
                     setTimeout(() => URL.revokeObjectURL(fontUrl), 1000);
                     
                     console.log(`字体通过备用方法加载成功: ${fontFamilyName}`);
@@ -3015,21 +2716,15 @@
         // 更新字体预览
         function updateFontPreview() {
             if (APP.customFont) {
-                // 显示预览区域
                 dom.fontPreview.style.display = 'block';
                 dom.fontPreviewText.textContent = `字体预览：${APP.customFont.name}`;
                 dom.fontPreviewName.textContent = `当前字体: ${APP.customFont.name} (${APP.customFont.fileType})`;
-                
-                // 应用预览字体（使用与主体相同的字体栈）
                 dom.fontPreviewText.style.fontFamily = document.body.style.fontFamily;
             } else {
-                // 隐藏预览区域
                 dom.fontPreview.style.display = 'none';
                 dom.fontPreviewText.textContent = '字体预览：中文字体示例';
                 dom.fontPreviewName.textContent = '';
-                
-                // 恢复默认字体
-                dom.fontPreviewText.style.fontFamily = "'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+                dom.fontPreviewText.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif";
             }
         }
 
@@ -3044,19 +2739,17 @@
             try {
                 await StorageManager.deleteAllNovels();
                 
-                // 重置当前状态
                 APP.currentNovel = null;
                 APP.chapters = [];
                 APP.currentChapterIndex = 0;
                 APP.scrollPosition = 0;
                 
-                // 更新UI
                 dom.fileUploadArea.style.display = 'flex';
                 dom.contentContainer.style.display = 'none';
                 dom.chaptersList.innerHTML = '';
                 dom.chaptersCount.textContent = '0';
+                dom.chapterTitle.textContent = '请选择章节';
                 
-                // 更新历史记录
                 await loadReadingHistory();
                 
                 showToast('所有小说数据已清除', 'success');
@@ -3079,10 +2772,7 @@
             
             try {
                 await StorageManager.deleteAllSettings();
-                
-                // 重置设置
                 await loadSettings();
-                
                 showToast('所有设置已清除', 'success');
             } catch (error) {
                 console.error('清除设置失败:', error);
@@ -3100,7 +2790,6 @@
             try {
                 const exportData = await StorageManager.exportAllData();
                 
-                // 创建下载链接
                 const dataStr = JSON.stringify(exportData, null, 2);
                 const dataBlob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(dataBlob);
@@ -3156,11 +2845,9 @@
                 
                 const importedCount = await StorageManager.importData(importData);
                 
-                // 重新加载设置和历史记录
                 await loadSettings();
                 await loadReadingHistory();
                 
-                // 更新字体预览
                 updateFontPreview();
                 
                 showToast(`数据导入成功，共导入${importedCount}本小说`, 'success');
@@ -3194,14 +2881,11 @@
             APP.chaptersPanelOpen = !APP.chaptersPanelOpen;
             
             if (APP.chaptersPanelOpen) {
-                // 显示章节面板
                 dom.chaptersPanel.classList.remove('collapsed');
                 dom.chaptersMask.classList.add('active');
                 
-                // 确保章节列表是最新的
                 updateChaptersList();
                 
-                // 滚动到当前章节
                 setTimeout(() => {
                     const activeItem = dom.chaptersList.querySelector('.chapter-item.active');
                     if (activeItem) {
@@ -3210,12 +2894,10 @@
                 }, 300);
                 
             } else {
-                // 隐藏章节面板
                 dom.chaptersPanel.classList.add('collapsed');
                 dom.chaptersMask.classList.remove('active');
             }
             
-            // 重置动画标志
             setTimeout(() => {
                 APP.isAnimating = false;
             }, APP.chaptersPanelOpen ? 500 : 300);
@@ -3229,42 +2911,19 @@
             APP.settingsPanelOpen = !APP.settingsPanelOpen;
             
             if (APP.settingsPanelOpen) {
-                // 显示设置面板
                 dom.settingsPanel.classList.remove('collapsed');
                 dom.settingsMask.classList.add('active');
                 
-                // 更新存储信息
                 updateStorageInfo();
                 
             } else {
-                // 隐藏设置面板
                 dom.settingsPanel.classList.add('collapsed');
                 dom.settingsMask.classList.remove('active');
             }
             
-            // 重置动画标志
             setTimeout(() => {
                 APP.isAnimating = false;
             }, APP.settingsPanelOpen ? 500 : 300);
-        }
-
-        // 检查窗口大小并调整布局
-        function checkWindowSize() {
-            const isSmallScreen = window.innerWidth < 768;
-            const isVerySmallScreen = window.innerWidth < 480;
-            const isShortScreen = window.innerHeight < 600;
-            
-            // 可以根据屏幕尺寸调整UI
-            if (isSmallScreen || isVerySmallScreen || isShortScreen) {
-                // CSS媒体查询会处理大部分样式调整
-                console.log('屏幕尺寸调整:', {
-                    width: window.innerWidth,
-                    height: window.innerHeight,
-                    isSmallScreen,
-                    isVerySmallScreen,
-                    isShortScreen
-                });
-            }
         }
 
         // 初始化Intersection Observer用于段落渐显动画
